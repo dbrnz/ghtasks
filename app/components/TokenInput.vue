@@ -10,6 +10,7 @@ const props = withDefaults(defineProps<{
   size?: 'xs' | 'sm' | 'md' | 'lg'
   variant?: 'outline' | 'soft' | 'subtle' | 'ghost' | 'none'
   autofocus?: boolean
+  ui?: Record<string, string>
 }>(), {
   size: 'md',
   variant: 'outline'
@@ -126,6 +127,7 @@ defineExpose({ focus })
       :size="size"
       :variant="variant"
       :autofocus="autofocus"
+      :ui="ui"
       class="w-full"
       autocomplete="off"
       spellcheck="false"

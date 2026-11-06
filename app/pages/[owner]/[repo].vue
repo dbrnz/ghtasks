@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
 import { useEventListener, useIntervalFn, useLocalStorage } from '@vueuse/core'
 import type { GhIssue, GroupBy, SmartFilter, SortBy, ViewSettings } from '~/utils/types'
 
@@ -34,35 +33,19 @@ addRepo(owner, name)
 
 // ---------------------------------------------------------------- View settings
 
-const DEFAULT_VIEW: ViewSettings = { search: '', state: 'open', groupBy: 'milestone', sortBy: 'priority', assignee: 'anyone' }
+const DEFAULT_VIEW: ViewSettings = {
+  search: '',
+  state: 'open',
+  groupBy: 'milestone',
+  sortBy: 'priority',
+  reverse: false,
+  assignee: 'anyone',
+  openedByMe: false,
+  hideEmpty: false,
+  hidden: []
+}
 const view = useLocalStorage<ViewSettings>(`ghtasks:view:${key}`, { ...DEFAULT_VIEW }, { mergeDefaults: true })
 const activeFilter = ref<string | null>(null)
-
-const stateItems = [
-  { label: 'Open', value: 'open', icon: 'i-lucide-circle-dot' },
-  { label: 'Closed', value: 'closed', icon: 'i-lucide-circle-check' },
-  { label: 'All', value: 'all', icon: 'i-lucide-circle-dashed' }
-]
-const groupItems = [
-  { label: 'No grouping', value: 'none', icon: 'i-lucide-list' },
-  { label: 'Milestone', value: 'milestone', icon: 'i-lucide-milestone' },
-  { label: 'Label', value: 'label', icon: 'i-lucide-tag' },
-  { label: 'Priority', value: 'priority', icon: 'i-lucide-signal' },
-  { label: 'Assignee', value: 'assignee', icon: 'i-lucide-users' }
-]
-const sortItems = [
-  { label: 'Priority', value: 'priority', icon: 'i-lucide-signal' },
-  { label: 'Recently updated', value: 'updated', icon: 'i-lucide-clock' },
-  { label: 'Newest', value: 'created', icon: 'i-lucide-calendar-plus' },
-  { label: 'Assignee', value: 'assignee', icon: 'i-lucide-user' },
-  { label: 'Title', value: 'title', icon: 'i-lucide-arrow-down-a-z' },
-  { label: 'Number', value: 'number', icon: 'i-lucide-hash' }
-]
-const assigneeItems = [
-  { label: 'Anyone', value: 'anyone', icon: 'i-lucide-users' },
-  { label: 'Assigned to me', value: 'me', icon: 'i-lucide-user-check' },
-  { label: 'Unassigned', value: 'unassigned', icon: 'i-lucide-user-x' }
-]
 
 watch(() => view.value.state, (state) => {
   if (state !== 'open') {
@@ -70,16 +53,26 @@ watch(() => view.value.state, (state) => {
   }
 }, { immediate: true })
 
+function viewOf(f: Partial<ViewSettings>): ViewSettings {
+  const settings = { ...DEFAULT_VIEW }
+  for (const k of Object.keys(DEFAULT_VIEW) as (keyof ViewSettings)[]) {
+    if (f[k] !== undefined) {
+      (settings as Record<string, unknown>)[k] = f[k]
+    }
+  }
+  return settings
+}
+
 // Any manual change means we're no longer showing a saved filter as-is
 watch(view, () => {
   const f = smart.filters.value.find(f => f.id === activeFilter.value)
-  if (f && (['search', 'state', 'groupBy', 'sortBy', 'assignee'] as const).some(k => f[k] !== view.value[k])) {
+  if (f && JSON.stringify(viewOf(f)) !== JSON.stringify(viewOf(view.value))) {
     activeFilter.value = null
   }
 }, { deep: true })
 
 function applyFilter(f: SmartFilter) {
-  view.value = { search: f.search, state: f.state, groupBy: f.groupBy, sortBy: f.sortBy, assignee: f.assignee }
+  view.value = viewOf(f)
   activeFilter.value = f.id
 }
 
@@ -91,24 +84,10 @@ async function saveFilter() {
   }
 }
 
-const filterMenu = computed<DropdownMenuItem[][]>(() => [
-  smart.filters.value.length
-    ? smart.filters.value.map(f => ({
-        label: f.name,
-        icon: 'i-lucide-filter',
-        type: 'checkbox' as const,
-        checked: f.id === activeFilter.value,
-        onSelect: () => applyFilter(f),
-        children: [[{ label: 'Delete', icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => smart.remove(f.id) }]]
-      }))
-    : [{ label: 'No smart filters yet', disabled: true }],
-  [
-    { label: 'Save current view…', icon: 'i-lucide-save', onSelect: saveFilter },
-    { label: 'Reset view', icon: 'i-lucide-rotate-ccw', onSelect: () => { view.value = { ...DEFAULT_VIEW }; activeFilter.value = null } }
-  ]
-])
-
-const activeFilterName = computed(() => smart.filters.value.find(f => f.id === activeFilter.value)?.name)
+function resetView() {
+  view.value = { ...DEFAULT_VIEW }
+  activeFilter.value = null
+}
 
 // ---------------------------------------------------------------- Filtering
 
@@ -123,6 +102,7 @@ const visible = computed(() => {
     if (view.value.state !== 'all' && issue.state !== view.value.state) return false
     if (view.value.assignee === 'me' && !issue.assignees.some(a => a.login === me)) return false
     if (view.value.assignee === 'unassigned' && issue.assignees.length) return false
+    if (view.value.openedByMe && issue.user?.login !== me) return false
     if (q.assignees.length && !q.assignees.every(l => issue.assignees.some(a => a.login.toLowerCase() === l.toLowerCase()))) return false
     if (q.labels.length && !q.labels.every(l => issue.labels.some(il => il.name.toLowerCase() === l.toLowerCase()))) return false
     if (q.priority && priorityOf(issue)?.key !== q.priority.key) return false
@@ -140,9 +120,11 @@ function compare(a: GhIssue, b: GhIssue, by: SortBy): number {
     case 'created': return b.created_at.localeCompare(a.created_at)
     case 'number': return b.number - a.number
     case 'title': return a.title.localeCompare(b.title)
+    case 'state':
+      return (a.state === b.state ? 0 : a.state === 'open' ? -1 : 1) || compare(a, b, 'updated')
     case 'assignee': {
-      const la = a.assignees[0]?.login ?? '￿'
-      const lb = b.assignees[0]?.login ?? '￿'
+      const la = a.assignees[0]?.login ?? '\uffff'
+      const lb = b.assignees[0]?.login ?? '\uffff'
       return la.localeCompare(lb) || compare(a, b, 'priority')
     }
     case 'priority':
@@ -151,11 +133,12 @@ function compare(a: GhIssue, b: GhIssue, by: SortBy): number {
 }
 
 function sorted(issues: GhIssue[]): GhIssue[] {
+  const direction = view.value.reverse ? -1 : 1
   return [...issues].sort((a, b) => {
+    // Pinned tasks always come first
     const pa = pins.isPinned(a.number) ? 0 : 1
     const pb = pins.isPinned(b.number) ? 0 : 1
-    // Open before closed, then pinned first
-    return (a.state === b.state ? 0 : a.state === 'open' ? -1 : 1) || pa - pb || compare(a, b, view.value.sortBy)
+    return pa - pb || direction * compare(a, b, view.value.sortBy)
   })
 }
 
@@ -168,15 +151,21 @@ interface Group {
   avatar?: string
   subtitle?: string
   issues: GhIssue[]
-  defaults: { labels?: string[], assignees?: string[], milestone?: number | null }
+  defaults: { labels?: string[], assignees?: string[], milestone?: number | null, type?: string }
 }
 
-const groups = computed<Group[]>(() => {
+// Every group for the current grouping, before hiding any
+const allGroups = computed<Group[]>(() => {
   const issues = visible.value
   const by: GroupBy = view.value.groupBy
   const result: Group[] = []
   if (by === 'none') {
     result.push({ key: 'all', title: 'All tasks', issues, defaults: {} })
+  } else if (by === 'type') {
+    for (const t of store.issueTypes) {
+      result.push({ key: `t${t.id}`, title: t.name, issues: issues.filter(i => i.type?.name === t.name), defaults: { type: t.name } })
+    }
+    result.push({ key: 't-none', title: 'No type', issues: issues.filter(i => !i.type), defaults: {} })
   } else if (by === 'milestone') {
     for (const m of store.milestones) {
       result.push({
@@ -230,6 +219,11 @@ const groups = computed<Group[]>(() => {
   }
   return result.map(g => ({ ...g, issues: sorted(g.issues) }))
 })
+
+const groups = computed(() => allGroups.value.filter(g =>
+  !view.value.hidden.includes(g.key) && !(view.value.hideEmpty && !g.issues.length)))
+
+const groupOptions = computed(() => allGroups.value.map(g => ({ key: g.key, title: g.title })))
 
 const collapsed = useLocalStorage<Record<string, boolean>>(`ghtasks:collapsed:${key}`, {})
 
@@ -312,7 +306,7 @@ useEventListener(window, 'focus', () => { if (store.loaded) refresh() })
 
 // ---------------------------------------------------------------- Keyboard
 
-const search = useTemplateRef<{ focus: () => void }>('search')
+const toolbar = useTemplateRef<{ openSearch: () => void }>('toolbar')
 const quickAdds = ref<Record<string, { open: () => void }>>({})
 
 function newTask() {
@@ -329,8 +323,8 @@ defineShortcuts({
   'k': () => move(-1),
   'arrowup': () => move(-1),
   'escape': () => { selected.value = [] },
-  '/': () => search.value?.focus(),
-  'meta_f': () => search.value?.focus(),
+  '/': () => toolbar.value?.openSearch(),
+  'meta_f': () => toolbar.value?.openSearch(),
   'n': newTask,
   'r': refresh,
   'x': () => selectedIssues.value.length && actions.setState(selectedIssues.value, selectedIssues.value.some(i => i.state === 'open') ? 'closed' : 'open'),
@@ -361,56 +355,27 @@ const SHORTCUTS: [string[], string][] = [
           <span class="text-muted font-normal">{{ owner }} /</span>&nbsp;{{ name }}
         </template>
         <template #right>
-          <UTooltip text="Keyboard shortcuts">
-            <UButton icon="i-lucide-keyboard" color="neutral" variant="ghost" @click="shortcutsOpen = true" />
-          </UTooltip>
-          <UTooltip text="Refresh" :kbds="['r']">
-            <UButton icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :loading="store.loading" @click="refresh" />
-          </UTooltip>
-          <UTooltip text="Open on GitHub">
-            <UButton icon="i-simple-icons-github" color="neutral" variant="ghost" @click="openExternal(`https://github.com/${owner}/${name}/issues`)" />
-          </UTooltip>
-        </template>
-      </UDashboardNavbar>
-
-      <UDashboardToolbar>
-        <template #left>
-          <TokenInput
-            ref="search"
-            v-model="view.search"
+          <ViewToolbar
+            ref="toolbar"
+            v-model:view="view"
             :users="store.assignees"
             :labels="store.labels"
-            placeholder="Search…  @user #label !priority"
-            icon="i-lucide-search"
-            size="sm"
-            class="w-64 lg:w-80"
-            @escape="view.search = ''"
+            :group-options="groupOptions"
+            :has-types="store.issueTypes.length > 0"
+            :smart-filters="smart.filters.value"
+            :active-filter="activeFilter"
+            :loading="store.loading"
+            @new-task="newTask"
+            @refresh="refresh"
+            @shortcuts="shortcutsOpen = true"
+            @open-github="openExternal(`https://github.com/${owner}/${name}/issues`)"
+            @apply-filter="applyFilter"
+            @save-filter="saveFilter"
+            @remove-filter="smart.remove"
+            @reset-view="resetView"
           />
         </template>
-        <template #right>
-          <USelect v-model="view.state" :items="stateItems" size="sm" class="w-28" />
-          <USelect v-model="view.assignee" :items="assigneeItems" size="sm" class="w-40" />
-          <USelect v-model="view.groupBy" :items="groupItems" size="sm" class="w-36">
-            <template #leading>
-              <span class="text-xs text-dimmed">Group</span>
-            </template>
-          </USelect>
-          <USelect v-model="view.sortBy" :items="sortItems" size="sm" class="w-44">
-            <template #leading>
-              <span class="text-xs text-dimmed">Sort</span>
-            </template>
-          </USelect>
-          <UDropdownMenu :items="filterMenu" :content="{ align: 'end' }">
-            <UButton
-              icon="i-lucide-sliders-horizontal"
-              :label="activeFilterName ?? 'Smart filters'"
-              :color="activeFilterName ? 'primary' : 'neutral'"
-              variant="outline"
-              size="sm"
-            />
-          </UDropdownMenu>
-        </template>
-      </UDashboardToolbar>
+      </UDashboardNavbar>
     </template>
 
     <template #body>

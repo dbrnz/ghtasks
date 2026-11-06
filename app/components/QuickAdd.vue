@@ -2,7 +2,7 @@
 // Add a task to a group by typing, e.g. `Fix login @alice #bug !high`
 
 const props = defineProps<{
-  defaults: { labels?: string[], assignees?: string[], milestone?: number | null }
+  defaults: { labels?: string[], assignees?: string[], milestone?: number | null, type?: string }
 }>()
 
 const emit = defineEmits<{

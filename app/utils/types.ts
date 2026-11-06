@@ -80,8 +80,8 @@ export interface IssuePatch {
 }
 
 export type StateFilter = 'open' | 'closed' | 'all'
-export type GroupBy = 'none' | 'milestone' | 'label' | 'priority' | 'assignee'
-export type SortBy = 'updated' | 'created' | 'priority' | 'assignee' | 'title' | 'number'
+export type GroupBy = 'none' | 'type' | 'milestone' | 'label' | 'priority' | 'assignee'
+export type SortBy = 'priority' | 'state' | 'created' | 'updated' | 'assignee' | 'title' | 'number'
 export type AssigneeFilter = 'anyone' | 'me' | 'unassigned'
 
 export interface ViewSettings {
@@ -89,7 +89,11 @@ export interface ViewSettings {
   state: StateFilter
   groupBy: GroupBy
   sortBy: SortBy
+  reverse: boolean        // reverse the sort order
   assignee: AssigneeFilter
+  openedByMe: boolean
+  hideEmpty: boolean      // hide groups with no tasks
+  hidden: string[]        // keys of groups not shown
 }
 
 export interface SmartFilter extends ViewSettings {

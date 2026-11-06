@@ -127,7 +127,7 @@ export function useTaskActions(data: RepoData) {
   }
 
   /** Create a task from quick-add text such as `Fix login @alice #bug !high`. */
-  async function create(text: string, defaults: { labels?: string[], assignees?: string[], milestone?: number | null } = {}) {
+  async function create(text: string, defaults: { labels?: string[], assignees?: string[], milestone?: number | null, type?: string } = {}) {
     const parsed = parseTokens(text, s.assignees, s.labels)
     if (!parsed.text) {
       return undefined
@@ -142,7 +142,8 @@ export function useTaskActions(data: RepoData) {
       title: parsed.text,
       labels,
       assignees,
-      milestone: defaults.milestone ?? null
+      milestone: defaults.milestone ?? null,
+      type: defaults.type ?? null
     }))
   }
 
