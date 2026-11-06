@@ -102,19 +102,19 @@ const menu = computed<ContextMenuItem[][]>(() => [
   <UContextMenu :items="menu">
     <div
       ref="row"
-      class="group flex items-center gap-2 pe-3 h-10 border-b border-default/60 cursor-default select-none"
-      :class="selected ? 'bg-primary/10' : 'hover:bg-elevated/50'"
+      class="group flex items-center gap-2 pe-3 h-8 cursor-default select-none"
+      :class="selected ? 'bg-primary/15' : 'hover:bg-elevated/50'"
       :data-number="issue.number"
       @click="emit('select', $event)"
       @dblclick="startEdit"
     >
       <!-- Pin, number and type; pinned tasks get a tab-shaped marker -->
       <div
-        class="flex items-center justify-end gap-1.5 h-7 w-24 ps-2 pe-3.5 shrink-0 text-xs font-medium tabular-nums"
+        class="flex items-center justify-end gap-1.5 h-5 w-24 ps-1.5 pe-3 shrink-0 text-xs font-medium tabular-nums"
         :class="pinned ? 'bg-primary text-inverted' : 'text-muted'"
-        :style="pinned ? { clipPath: 'polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)' } : undefined"
+        :style="pinned ? { clipPath: 'polygon(0 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 0 100%)' } : undefined"
       >
-        <UIcon v-if="pinned" name="i-lucide-pin" class="size-3.5 me-auto" />
+        <UIcon v-if="pinned" name="i-lucide-pin" class="size-3 me-auto" />
         <span>#{{ issue.number }}</span>
         <PickerMenu
           v-if="hasTypes"
@@ -127,14 +127,14 @@ const menu = computed<ContextMenuItem[][]>(() => [
           trigger-class="p-0"
           @commit="v => actions.setType([issue], !v[0] || v[0] === NO_TYPE ? null : v[0])"
         >
-          <TypeDot :type="issue.type" :class="pinned ? 'ring-2 ring-white/70' : ''" />
+          <TypeDot :type="issue.type" />
         </PickerMenu>
         <TypeDot v-else-if="issue.type" :type="issue.type" />
       </div>
 
       <UCheckbox
         :model-value="closed"
-        :ui="{ base: 'rounded-full' }"
+        :ui="{ base: 'rounded-[4px]' }"
         :aria-label="closed ? 'Reopen' : 'Close'"
         @click.stop
         @update:model-value="actions.toggleState(issue)"

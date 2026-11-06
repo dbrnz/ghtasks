@@ -44,7 +44,7 @@ defineExpose({ open })
 </script>
 
 <template>
-  <div class="px-3 py-1.5 border-b border-default/60">
+  <div class="px-3 py-0.5">
     <TokenInput
       v-if="active"
       ref="input"

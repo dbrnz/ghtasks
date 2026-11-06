@@ -4,6 +4,19 @@
 @theme static {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Theme colour (primary), built around #2c93cb */
+  --color-cerulean-50: oklch(97.7% 0.013 237.8);
+  --color-cerulean-100: oklch(95.1% 0.024 237.8);
+  --color-cerulean-200: oklch(90.1% 0.045 237.8);
+  --color-cerulean-300: oklch(82.8% 0.075 237.8);
+  --color-cerulean-400: oklch(72.2% 0.110 237.8);
+  --color-cerulean-500: oklch(63.1% 0.124 237.8);
+  --color-cerulean-600: oklch(54.0% 0.118 237.8);
+  --color-cerulean-700: oklch(46.5% 0.105 237.8);
+  --color-cerulean-800: oklch(40.0% 0.093 237.8);
+  --color-cerulean-900: oklch(34.5% 0.077 237.8);
+  --color-cerulean-950: oklch(27.0% 0.062 237.8);
 }
 
 html, body {
