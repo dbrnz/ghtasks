@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The task list's toolbar: new task, quick filters, sort, group, search and more
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useResizeObserver } from '@vueuse/core'
 import type { GhLabel, GhUser, GroupBy, SmartFilter, SortBy, ViewSettings } from '~/utils/types'
 
 const props = defineProps<{
@@ -165,6 +166,40 @@ function openSearch() {
   nextTick(() => searchInput.value?.focus())
 }
 
+// ---------------------------------------------------------------- Full or condensed
+
+// With room to spare, the search field stays open and the "…" menu's actions
+// get their own buttons; otherwise the toolbar condenses to icons.
+
+const root = useTemplateRef<HTMLElement>('root')
+const full = ref(false)
+// Roughly how much wider the full toolbar is: the search field (minus its
+// icon) and three buttons in place of "…"
+const FULL_EXTRA = 300
+
+function layout() {
+  const toolbar = root.value
+  const bar = toolbar?.closest<HTMLElement>('[data-slot="root"]')
+  const left = bar?.querySelector<HTMLElement>('[data-slot="left"]')
+  if (!toolbar || !bar || !left || !bar.clientWidth) {
+    return
+  }
+  const style = getComputedStyle(bar)
+  const inner = bar.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
+  const free = inner - left.scrollWidth - toolbar.offsetWidth - 24 // keep a little gap
+  if (full.value) {
+    if (free < 0) full.value = false
+  } else if (free >= FULL_EXTRA) {
+    full.value = true
+  }
+}
+
+useResizeObserver(() => root.value?.closest<HTMLElement>('[data-slot="root"]') ?? null, layout)
+onMounted(() => nextTick(layout))
+watch(full, () => nextTick(layout))
+
+const showSearchField = computed(() => full.value || searching.value)
+
 function closeSearch() {
   update({ search: '' })
   searching.value = false
@@ -175,6 +210,9 @@ function onSearchEscape() {
     update({ search: '' })
   } else {
     searching.value = false
+    if (full.value) {
+      (document.activeElement as HTMLElement | null)?.blur()
+    }
   }
 }
 
@@ -192,7 +230,7 @@ defineExpose({ openSearch })
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
+  <div ref="root" class="flex items-center gap-2">
     <UTooltip text="New task" :kbds="['n']">
       <UButton icon="i-lucide-plus" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="New task" @click="emit('new-task')" />
     </UTooltip>
@@ -286,9 +324,9 @@ defineExpose({ openSearch })
       </UDropdownMenu>
     </div>
 
-    <!-- Search: an icon that expands into a field -->
-    <template v-if="searching">
-      <UButton icon="i-lucide-chevrons-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Close search" @click="closeSearch" />
+    <!-- Search: a field, or (when space is short) an icon that expands into one -->
+    <template v-if="showSearchField">
+      <UButton v-if="!full" icon="i-lucide-chevrons-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Close search" @click="closeSearch" />
       <TokenInput
         ref="searchInput"
         :model-value="view.search"
@@ -306,7 +344,26 @@ defineExpose({ openSearch })
       <UButton icon="i-lucide-search" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Search" @click="openSearch" />
     </UTooltip>
 
-    <UDropdownMenu :items="moreMenu" :content="{ align: 'end' }">
+    <template v-if="full">
+      <UTooltip text="Refresh" :kbds="['r']">
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="ghost"
+          :class="[ROUND, PILL_BG]"
+          :ui="{ leadingIcon: loading ? 'animate-spin' : '' }"
+          aria-label="Refresh"
+          @click="emit('refresh')"
+        />
+      </UTooltip>
+      <UTooltip text="Keyboard shortcuts">
+        <UButton icon="i-lucide-keyboard" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Keyboard shortcuts" @click="emit('shortcuts')" />
+      </UTooltip>
+      <UTooltip text="Open on GitHub">
+        <UButton icon="i-simple-icons-github" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Open on GitHub" @click="emit('open-github')" />
+      </UTooltip>
+    </template>
+    <UDropdownMenu v-else :items="moreMenu" :content="{ align: 'end' }">
       <UButton
         :icon="loading ? 'i-lucide-loader-circle' : 'i-lucide-ellipsis'"
         color="neutral"
@@ -317,8 +374,9 @@ defineExpose({ openSearch })
       />
     </UDropdownMenu>
 
+    <!-- Set apart from the toolbar: shows the hidden details panel -->
     <UTooltip v-if="!inspector.open.value" text="Toggle Inspector" :kbds="['i']">
-      <UButton icon="i-lucide-panel-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Toggle Inspector" @click="inspector.toggle()" />
+      <UButton icon="i-lucide-panel-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" class="ms-4" aria-label="Toggle Inspector" @click="inspector.toggle()" />
     </UTooltip>
   </div>
 </template>
