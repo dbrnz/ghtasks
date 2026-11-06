@@ -4,7 +4,6 @@ import type { GhIssue } from '~/utils/types'
 
 const props = defineProps<{ issues: GhIssue[] }>()
 
-const emit = defineEmits<{ close: [] }>()
 
 const { data, actions, pins } = useTasksContext()
 const inspectorWidth = useInspectorWidth()
@@ -80,8 +79,8 @@ const CHIP = PANEL_CHIP
                 @click="pins.setPinned(issues.map(i => i.number), !allPinned)"
               />
             </UTooltip>
-            <UTooltip text="Clear selection" :kbds="['escape']">
-              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" aria-label="Clear selection" @click="emit('close')" />
+            <UTooltip text="Toggle Inspector" :kbds="['i']">
+              <UButton icon="i-lucide-panel-right" color="neutral" variant="ghost" :class="ROUND_BUTTON" aria-label="Toggle Inspector" @click="inspectorWidth.toggle()" />
             </UTooltip>
           </div>
         </div>

@@ -32,7 +32,7 @@ function update(patch: Partial<ViewSettings>) {
 
 // Shared look for the round icon buttons
 const ROUND = 'rounded-full'
-const PILL_BG = 'bg-elevated/70'
+const PILL_BG = 'bg-accented/80'
 
 // ---------------------------------------------------------------- Quick filters
 
@@ -186,6 +186,8 @@ const moreMenu = computed<DropdownMenuItem[][]>(() => [[
   { label: 'Open on GitHub', icon: 'i-simple-icons-github', onSelect: () => emit('open-github') }
 ]])
 
+const inspector = useInspectorWidth()
+
 defineExpose({ openSearch })
 </script>
 
@@ -314,5 +316,9 @@ defineExpose({ openSearch })
         aria-label="More"
       />
     </UDropdownMenu>
+
+    <UTooltip v-if="!inspector.open.value" text="Toggle Inspector" :kbds="['i']">
+      <UButton icon="i-lucide-panel-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Toggle Inspector" @click="inspector.toggle()" />
+    </UTooltip>
   </div>
 </template>

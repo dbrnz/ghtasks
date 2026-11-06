@@ -5,6 +5,8 @@ import { useLocalStorage } from '@vueuse/core'
 export const INSPECTOR_WIDTH = { default: 38, min: 25, max: 65 }
 
 const width = useLocalStorage<number>('ghtasks:inspector-width', INSPECTOR_WIDTH.default)
+// Whether the details panel is shown, with or without a selected task
+const open = useLocalStorage<boolean>('ghtasks:inspector-open', true)
 
 export function useInspectorWidth() {
   function set(value: number) {
@@ -18,5 +20,9 @@ export function useInspectorWidth() {
   // Applied as a CSS variable so narrow (mobile) layouts can ignore it
   const style = computed(() => ({ '--inspector-width': `${width.value}%` }))
 
-  return { width, style, set, reset }
+  function toggle() {
+    open.value = !open.value
+  }
+
+  return { width, style, set, reset, open, toggle }
 }

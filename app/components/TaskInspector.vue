@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { GhIssue } from '~/utils/types'
 
-const props = defineProps<{ issue: GhIssue }>()
-
-const emit = defineEmits<{ close: [] }>()
+const props = defineProps<{
+  issue: GhIssue
+  /** Shown on its own, in a separate window */
+  standalone?: boolean
+}>()
 
 const { data, actions, pins } = useTasksContext()
 const inspectorWidth = useInspectorWidth()
@@ -74,6 +76,24 @@ const stateBadge = computed(() => {
 })
 
 const HEADING = PANEL_HEADING
+const toast = useToast()
+
+const copyMenu = computed(() => [COPY_FORMATS.map(format => ({
+  label: format.label,
+  icon: format.icon,
+  onSelect: async () => {
+    try {
+      await navigator.clipboard.writeText(format.text(props.issue))
+      toast.add({ title: `Copied ${format.label}`, icon: 'i-lucide-clipboard-check', duration: 1500 })
+    } catch (err) {
+      toast.add({ title: 'Unable to copy', description: errorMessage(err), color: 'error' })
+    }
+  }
+}))])
+
+function openInWindow() {
+  openTaskWindow(data.store.owner, data.store.name, props.issue.number, props.issue.title)
+}
 const commentThread = useTemplateRef<{ compose: () => void }>('commentThread')
 const NEW_MILESTONE = { label: 'New Milestone…', icon: 'i-lucide-circle-plus' }
 const SELECT = PANEL_SELECT
@@ -95,48 +115,72 @@ function setPriority(values: string[]) {
 </script>
 
 <template>
-  <UDashboardPanel id="inspector" class="lg:flex-none lg:w-(--inspector-width)" :style="inspectorWidth.style.value">
+  <UDashboardPanel
+    id="inspector"
+    :class="standalone ? 'flex-1' : 'lg:flex-none lg:w-(--inspector-width)'"
+    :style="standalone ? undefined : inspectorWidth.style.value"
+  >
     <template #header>
-      <InspectorResizeHandle />
-      <!-- Title and assignees -->
-      <div class="px-5 pt-4 pb-4 border-b border-default">
-        <div class="flex items-start gap-2">
-          <UTextarea
-            v-model="title"
-            autoresize
-            :rows="1"
-            variant="none"
-            class="flex-1"
-            :ui="{ base: 'text-2xl md:text-2xl font-normal leading-snug p-0 resize-none' }"
-            @blur="saveTitle"
-            @keydown.enter.prevent="($event.target as HTMLTextAreaElement).blur()"
-            @keydown.esc="title = issue.title; ($event.target as HTMLTextAreaElement).blur()"
+      <InspectorResizeHandle v-if="!standalone" />
+      <div class="px-5 pt-3 pb-4 border-b border-default">
+        <!-- Close checkbox, number and tools -->
+        <div class="flex items-center gap-2">
+          <UCheckbox
+            :model-value="issue.state === 'closed'"
+            size="xl"
+            :ui="{ base: 'rounded-[6px] bg-elevated border-default' }"
+            :aria-label="issue.state === 'closed' ? 'Reopen' : 'Close'"
+            @update:model-value="actions.toggleState(issue)"
           />
-          <div class="flex items-center -me-2 shrink-0">
+          <span class="text-2xl font-semibold text-muted tabular-nums">#{{ issue.number }}</span>
+          <div class="ms-auto flex items-center gap-2 -me-1">
+            <div :class="BUTTON_PILL">
+              <UDropdownMenu :items="copyMenu" :content="{ align: 'center' }">
+                <UTooltip text="Copy">
+                  <UButton icon="i-lucide-files" color="neutral" variant="ghost" class="rounded-full" aria-label="Copy" />
+                </UTooltip>
+              </UDropdownMenu>
+              <UTooltip text="Open on GitHub">
+                <UButton icon="i-lucide-compass" color="neutral" variant="ghost" class="rounded-full" aria-label="Open on GitHub" @click="openExternal(issue.html_url)" />
+              </UTooltip>
+              <UTooltip v-if="!standalone" text="Open in Window">
+                <UButton icon="i-lucide-square-arrow-out-up-right" color="neutral" variant="ghost" class="rounded-full" aria-label="Open in Window" @click="openInWindow" />
+              </UTooltip>
+            </div>
             <UTooltip :text="pinned ? 'Unpin' : 'Pin to top'">
               <UButton
                 :icon="pinned ? 'i-lucide-pin-off' : 'i-lucide-pin'"
-                color="neutral"
+                :color="pinned ? 'primary' : 'neutral'"
                 variant="ghost"
-                size="sm"
+                :class="ROUND_BUTTON"
+                :aria-label="pinned ? 'Unpin' : 'Pin to top'"
                 @click="pins.togglePin(issue.number)"
               />
             </UTooltip>
-            <UTooltip :text="`Open #${issue.number} on GitHub`">
-              <UButton icon="i-lucide-external-link" color="neutral" variant="ghost" size="sm" @click="openExternal(issue.html_url)" />
-            </UTooltip>
-            <UTooltip text="Close" :kbds="['escape']">
-              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" aria-label="Close details" @click="emit('close')" />
+            <UTooltip v-if="!standalone" text="Toggle Inspector" :kbds="['i']">
+              <UButton icon="i-lucide-panel-right" color="neutral" variant="ghost" :class="ROUND_BUTTON" aria-label="Toggle Inspector" @click="inspectorWidth.toggle()" />
             </UTooltip>
           </div>
         </div>
 
+        <!-- Title and assignees -->
+        <UTextarea
+          v-model="title"
+          autoresize
+          :rows="1"
+          variant="none"
+          class="w-full mt-3"
+          :ui="{ base: 'text-2xl md:text-2xl font-normal leading-snug p-0 resize-none' }"
+          @blur="saveTitle"
+          @keydown.enter.prevent="($event.target as HTMLTextAreaElement).blur()"
+          @keydown.esc="title = issue.title; ($event.target as HTMLTextAreaElement).blur()"
+        />
         <PickerMenu
           :items="assigneeItems"
           :model-value="issue.assignees.map(a => a.login)"
           variant="none"
           search-placeholder="Assignees…"
-          trigger-class="p-0 mt-2"
+          trigger-class="p-0 mt-1.5"
           @commit="users => actions.setAssignees(issue, users)"
         >
           <span v-if="issue.assignees.length" class="flex flex-wrap gap-1.5">
@@ -144,7 +188,7 @@ function setPriority(values: string[]) {
               <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
             </span>
           </span>
-          <span v-else class="text-sm text-dimmed">Assign someone</span>
+          <span v-else class="text-[15px] text-dimmed">Unassigned</span>
         </PickerMenu>
       </div>
     </template>

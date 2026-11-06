@@ -20,3 +20,27 @@ export function interceptLinks(event: MouseEvent) {
     openExternal(anchor.href)
   }
 }
+
+/** Show a task on its own, in a new window (or a browser tab outside Tauri). */
+export async function openTaskWindow(owner: string, repo: string, number: number, title: string) {
+  const path = `/task/${owner}/${repo}/${number}`
+  if (!inTauri) {
+    window.open(path, '_blank')
+    return
+  }
+  const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+  const label = `task-${owner}-${repo}-${number}`.replace(/[^\w-]/g, '_')
+  const existing = await WebviewWindow.getByLabel(label)
+  if (existing) {
+    await existing.setFocus()
+    return
+  }
+  new WebviewWindow(label, {
+    url: path,
+    title: `#${number} ${title}`,
+    width: 560,
+    height: 760,
+    minWidth: 380,
+    minHeight: 400
+  })
+}

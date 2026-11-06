@@ -280,6 +280,14 @@ function select(number: number, event?: MouseEvent) {
   }
 }
 
+/** A click on the list's background (not a task or control) deselects everything. */
+function onListClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (!target.closest('[data-number], button, a, input, textarea, [role="menu"], [role="listbox"], [role="dialog"]')) {
+    selected.value = []
+  }
+}
+
 function move(delta: number) {
   const list = order.value
   if (!list.length) return
@@ -338,6 +346,7 @@ defineShortcuts({
   'x': () => selectedIssues.value.length && actions.setState(selectedIssues.value, selectedIssues.value.some(i => i.state === 'open') ? 'closed' : 'open'),
   'p': () => selectedIssues.value.length && pins.setPinned(selected.value, !selected.value.every(n => pins.isPinned(n))),
   'o': () => selectedIssues.value.length === 1 && openExternal(selectedIssues.value[0]!.html_url),
+  'i': () => inspector.toggle(),
   'meta_a': () => { selected.value = [...order.value] },
   '1': () => selectedIssues.value.length && actions.setPriority(selectedIssues.value, PRIORITIES[0]),
   '2': () => selectedIssues.value.length && actions.setPriority(selectedIssues.value, PRIORITIES[1]),
@@ -346,12 +355,14 @@ defineShortcuts({
   '0': () => selectedIssues.value.length && actions.setPriority(selectedIssues.value, undefined)
 })
 
+const inspector = useInspectorWidth()
+
 const shortcutsOpen = ref(false)
 const SHORTCUTS: [string[], string][] = [
   [['j'], 'Next task'], [['k'], 'Previous task'], [['meta', 'click'], 'Add to selection'], [['shift', 'click'], 'Select range'],
   [['meta', 'a'], 'Select all'], [['escape'], 'Clear selection'], [['n'], 'New task'], [['/'], 'Search'],
   [['x'], 'Close / reopen'], [['p'], 'Pin / unpin'], [['1'], 'Urgent … 4 = Low'], [['0'], 'Clear priority'],
-  [['o'], 'Open on GitHub'], [['r'], 'Refresh'], [['meta', 'o'], 'Add repository']
+  [['o'], 'Open on GitHub'], [['i'], 'Show / hide details'], [['r'], 'Refresh'], [['meta', 'o'], 'Add repository']
 ]
 </script>
 
@@ -402,7 +413,7 @@ const SHORTCUTS: [string[], string][] = [
         <USkeleton v-for="n in 8" :key="n" class="h-8 w-full" />
       </div>
 
-      <div v-else class="-mx-4 -my-4 sm:-mx-6 sm:-my-6" @click.self="selected = []">
+      <div v-else class="flex-1 -mx-4 -my-4 sm:-mx-6 sm:-my-6" @click="onListClick">
         <section v-for="group in groups" :key="group.key" class="pt-4 first:pt-2">
           <!-- Group title with a rule to the right; click to collapse -->
           <button
@@ -459,17 +470,19 @@ const SHORTCUTS: [string[], string][] = [
     </template>
   </UDashboardPanel>
 
-  <TaskInspector
-    v-if="selectedIssues.length === 1"
-    :key="selectedIssues[0]!.number"
-    :issue="selectedIssues[0]!"
-    @close="selected = []"
-  />
-  <BatchInspector
-    v-else-if="selectedIssues.length > 1"
-    :issues="selectedIssues"
-    @close="selected = []"
-  />
+  <!-- The details panel stays open (toggle with `i`), even with nothing selected -->
+  <template v-if="inspector.open.value">
+    <TaskInspector
+      v-if="selectedIssues.length === 1"
+      :key="selectedIssues[0]!.number"
+      :issue="selectedIssues[0]!"
+    />
+    <BatchInspector
+      v-else-if="selectedIssues.length > 1"
+      :issues="selectedIssues"
+    />
+    <EmptyInspector v-else />
+  </template>
 
   <UModal v-model:open="shortcutsOpen" title="Keyboard shortcuts">
     <template #body>

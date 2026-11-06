@@ -16,3 +16,8 @@ export const PANEL_CHIP = 'inline-flex items-center gap-1.5 h-6 px-2 rounded-ful
 
 /** The status bars along the bottom of the task list and details panels */
 export const STATUS_BAR = 'flex items-center justify-center h-10 shrink-0 px-4 border-t border-default bg-elevated/40 text-sm text-muted'
+
+/** Round, softly shaded icon buttons, e.g. in the details panel's header */
+export const ROUND_BUTTON = 'rounded-full bg-accented/80 hover:bg-accented'
+/** A pill grouping several icon buttons */
+export const BUTTON_PILL = 'flex items-center gap-0.5 p-0.5 rounded-full bg-accented/80'
