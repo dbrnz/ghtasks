@@ -173,30 +173,71 @@ function openSearch() {
 
 const root = useTemplateRef<HTMLElement>('root')
 const full = ref(false)
-// Roughly how much wider the full toolbar is: the search field (minus its
-// icon) and three buttons in place of "…"
-const FULL_EXTRA = 300
 
-function layout() {
+// How much wider the full toolbar is than the condensed one. It starts as an
+// estimate and is then measured, as it depends on the search field's width.
+// Switching to full needs that much free space plus MARGIN, while switching
+// back only happens once the full toolbar no longer fits; the difference stops
+// it flipping back and forth.
+let fullExtra = 360
+let condensedWidth = 0
+const MARGIN = 16
+// Belt and braces: never flip more than a few times in quick succession
+let flips: number[] = []
+
+function measure() {
   const toolbar = root.value
   const bar = toolbar?.closest<HTMLElement>('[data-slot="root"]')
   const left = bar?.querySelector<HTMLElement>('[data-slot="left"]')
   if (!toolbar || !bar || !left || !bar.clientWidth) {
-    return
+    return null
   }
   const style = getComputedStyle(bar)
   const inner = bar.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
-  const free = inner - left.scrollWidth - toolbar.offsetWidth - 24 // keep a little gap
+  return { width: toolbar.offsetWidth, free: inner - left.scrollWidth - toolbar.offsetWidth - 24 }
+}
+
+function setFull(value: boolean) {
+  const now = performance.now()
+  flips = flips.filter(t => now - t < 1000)
+  if (flips.length >= 4) {
+    return
+  }
+  flips.push(now)
+  full.value = value
+}
+
+function layout() {
+  const m = measure()
+  if (!m) {
+    return
+  }
   if (full.value) {
-    if (free < 0) full.value = false
-  } else if (free >= FULL_EXTRA) {
-    full.value = true
+    if (m.free < 0) {
+      setFull(false)
+    }
+  } else if (m.free >= fullExtra + MARGIN) {
+    // Only a fully condensed toolbar (search closed) gives the right baseline
+    condensedWidth = searching.value ? 0 : m.width
+    setFull(true)
   }
 }
 
 useResizeObserver(() => root.value?.closest<HTMLElement>('[data-slot="root"]') ?? null, layout)
 onMounted(() => nextTick(layout))
-watch(full, () => nextTick(layout))
+
+// Once the full toolbar has rendered, learn its real extra width
+watch(full, async (isFull) => {
+  await nextTick()
+  if (isFull && condensedWidth) {
+    const m = measure()
+    if (m) {
+      fullExtra = m.width - condensedWidth
+    }
+  }
+  // Re-check on the next frame (not straight away), so the browser can draw
+  requestAnimationFrame(layout)
+})
 
 const showSearchField = computed(() => full.value || searching.value)
 
