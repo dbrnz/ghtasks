@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Source for the app icons: regenerate them with `bun run tauri icon app-icon.svg` -->
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34383f"/>
+      <stop offset="1" stop-color="#17191d"/>
+    </linearGradient>
+    <linearGradient id="glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ad6ff"/>
+      <stop offset="1" stop-color="#3fb0f5"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14"/>
+      <feOffset dy="10"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- macOS icon grid: an 824px rounded square centred on a 1024px canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#background)" filter="url(#shadow)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="3"/>
+
+  <!-- Lucide "list-checks", centred and scaled up -->
+  <g transform="translate(512 512) scale(23) translate(-12 -12)"
+     fill="none" stroke="url(#glyph)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 5h8m-8 7h8m-8 7h8M3 17l2 2l4-4M3 7l2 2l4-4"/>
+  </g>
+</svg>
