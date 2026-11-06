@@ -3,6 +3,7 @@ import type { RepoStore } from './useRepoData'
 
 export const NO_MILESTONE = '__none__'
 export const NO_PRIORITY = '__none__'
+export const NO_TYPE = '__none__'
 
 export function usePickerItems(store: RepoStore) {
   const labelItems = computed<PickerItem[]>(() => store.labels
@@ -27,5 +28,15 @@ export function usePickerItems(store: RepoStore) {
     ...PRIORITIES.map(p => ({ value: p.key, label: p.title, icon: p.icon, iconClass: p.class }))
   ])
 
-  return { labelItems, assigneeItems, milestoneItems, priorityItems }
+  const typeItems = computed<PickerItem[]>(() => [
+    { value: NO_TYPE, label: 'None', icon: 'i-lucide-circle-dashed', iconClass: 'text-dimmed' },
+    ...store.issueTypes.map(t => ({
+      value: t.name,
+      label: t.name,
+      ringColor: issueTypeColor(t),
+      description: t.description ?? undefined
+    }))
+  ])
+
+  return { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems }
 }

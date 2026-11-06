@@ -1,4 +1,4 @@
-import type { GhComment, GhIssue, GhLabel, GhMilestone, GhUser, IssuePatch } from '~/utils/types'
+import type { GhComment, GhIssue, GhIssueType, GhLabel, GhMilestone, GhUser, IssuePatch } from '~/utils/types'
 
 // A cache of each repository's issues, labels, milestones and assignable users.
 // Everything is read from and written straight to GitHub -- nothing is stored
@@ -14,6 +14,7 @@ export interface RepoStore {
   labels: GhLabel[]
   milestones: GhMilestone[]
   assignees: GhUser[]
+  issueTypes: GhIssueType[] // empty unless the owner is an organisation with issue types
   loading: boolean
   loaded: boolean
   closedLoaded: boolean
@@ -35,6 +36,7 @@ function newStore(owner: string, name: string): RepoStore {
     labels: [],
     milestones: [],
     assignees: [],
+    issueTypes: [],
     loading: false,
     loaded: false,
     closedLoaded: false,
@@ -88,6 +90,16 @@ export function useRepoData(owner: string, name: string) {
     s.assignees = (assignees as GhUser[]).sort((a, b) => a.login.localeCompare(b.login))
   }
 
+  async function loadIssueTypes(): Promise<GhIssueType[]> {
+    try {
+      const { data } = await octokit().rest.orgs.listIssueTypes({ org: owner })
+      return (data as GhIssueType[]).filter(t => t.is_enabled !== false)
+    } catch {
+      // Personal repos, or organisations without issue types
+      return []
+    }
+  }
+
   async function loadOpen() {
     const gh = octokit()
     const started = new Date().toISOString()
@@ -138,7 +150,8 @@ export function useRepoData(owner: string, name: string) {
       return
     }
     await run(async () => {
-      await Promise.all([loadMeta(), loadOpen()])
+      // Issue types are only looked up on a full load, as personal repos 404
+      await Promise.all([loadMeta(), loadOpen(), loadIssueTypes().then((types) => { s.issueTypes = types })])
       s.loaded = true
     })
   }
@@ -204,7 +217,7 @@ export function useRepoData(owner: string, name: string) {
     }
   }
 
-  async function createIssue(issue: { title: string, body?: string, labels?: string[], assignees?: string[], milestone?: number | null }): Promise<GhIssue> {
+  async function createIssue(issue: { title: string, body?: string, labels?: string[], assignees?: string[], milestone?: number | null, type?: string | null }): Promise<GhIssue> {
     const gh = octokit()
     const { data } = await gh.rest.issues.create({
       ...base,
@@ -213,8 +226,9 @@ export function useRepoData(owner: string, name: string) {
       labels: issue.labels,
       assignees: issue.assignees,
       milestone: issue.milestone ?? undefined,
+      ...(issue.type ? { type: issue.type } : {}),
       mediaType: FULL
-    })
+    } as Parameters<typeof gh.rest.issues.create>[0])
     upsert(data as GhIssue)
     return find(data.number)!
   }

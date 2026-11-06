@@ -7,7 +7,7 @@ const props = defineProps<{ issues: GhIssue[] }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { data, actions, pins } = useTasksContext()
-const { labelItems, assigneeItems, milestoneItems, priorityItems } = usePickerItems(data.store)
+const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems } = usePickerItems(data.store)
 
 const busy = ref(false)
 
@@ -58,6 +58,22 @@ const anyOpen = computed(() => props.issues.some(i => i.state === 'open'))
     <template #body>
       <div class="space-y-6">
         <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-2 items-center text-sm">
+          <template v-if="data.store.issueTypes.length">
+            <dt class="text-muted">
+              Type
+            </dt>
+            <dd>
+              <PickerMenu
+                :items="typeItems"
+                :model-value="[]"
+                :multiple="false"
+                placeholder="Set type…"
+                variant="outline"
+                @commit="v => run(() => actions.setType(issues, !v[0] || v[0] === NO_TYPE ? null : v[0]))"
+              />
+            </dd>
+          </template>
+
           <dt class="text-muted">
             Priority
           </dt>

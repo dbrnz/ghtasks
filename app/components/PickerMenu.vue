@@ -90,6 +90,11 @@ function onCreate(name: string) {
     </template>
     <template #item-leading="{ item }">
       <UAvatar v-if="item.avatar" v-bind="item.avatar" size="3xs" />
+      <span
+        v-else-if="item.ringColor"
+        class="size-3.5 rounded-full border-2 shrink-0"
+        :style="{ borderColor: item.ringColor, backgroundColor: `color-mix(in srgb, ${item.ringColor} 30%, transparent)` }"
+      />
       <span v-else-if="item.color" class="size-3 rounded-full shrink-0 ms-0.5" :style="{ backgroundColor: `#${item.color}` }" />
       <UIcon v-else-if="item.icon" :name="item.icon" class="size-4" :class="item.iconClass" />
     </template>

@@ -110,6 +110,10 @@ export function useTaskActions(data: RepoData) {
     return update(issues, i => (i.milestone?.number ?? null) === milestone ? null : { milestone }, 'set milestone')
   }
 
+  function setType(issues: GhIssue[], type: string | null) {
+    return update(issues, i => (i.type?.name ?? null) === type ? null : { type }, 'set type')
+  }
+
   async function setPriority(issues: GhIssue[], priority: Priority | undefined) {
     if (priority) {
       await attempt('Unable to create priority label', () => withLabels([priority.label]))
@@ -155,6 +159,7 @@ export function useTaskActions(data: RepoData) {
     addAssignee,
     removeAssignee,
     setMilestone,
+    setType,
     setPriority,
     create
   }

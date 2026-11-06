@@ -6,7 +6,7 @@ const props = defineProps<{ issue: GhIssue }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { data, actions, pins } = useTasksContext()
-const { labelItems, assigneeItems, milestoneItems, priorityItems } = usePickerItems(data.store)
+const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems } = usePickerItems(data.store)
 
 const priority = computed(() => priorityOf(props.issue))
 const labels = computed(() => props.issue.labels.filter(l => !isPriorityLabel(l.name)))
@@ -77,6 +77,11 @@ function setMilestone(values: string[]) {
   actions.setMilestone([props.issue], !v || v === NO_MILESTONE ? null : Number(v))
 }
 
+function setType(values: string[]) {
+  const v = values[0]
+  actions.setType([props.issue], !v || v === NO_TYPE ? null : v)
+}
+
 function setPriority(values: string[]) {
   actions.setPriority([props.issue], PRIORITIES.find(p => p.key === values[0]))
 }
@@ -144,6 +149,26 @@ function setPriority(values: string[]) {
               />
             </UDropdownMenu>
           </dd>
+
+          <template v-if="data.store.issueTypes.length || issue.type">
+            <dt class="text-muted">
+              Type
+            </dt>
+            <dd>
+              <PickerMenu
+                :items="typeItems"
+                :model-value="[issue.type?.name ?? NO_TYPE]"
+                :multiple="false"
+                search-placeholder="Type…"
+                @commit="setType"
+              >
+                <span v-if="issue.type" class="flex items-center gap-1.5">
+                  <TypeDot :type="issue.type" />{{ issue.type.name }}
+                </span>
+                <span v-else class="text-dimmed">None</span>
+              </PickerMenu>
+            </dd>
+          </template>
 
           <dt class="text-muted">
             Priority

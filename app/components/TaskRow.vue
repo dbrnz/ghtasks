@@ -13,7 +13,8 @@ const emit = defineEmits<{
 }>()
 
 const { data, actions, pins } = useTasksContext()
-const { labelItems, assigneeItems } = usePickerItems(data.store)
+const { labelItems, assigneeItems, typeItems } = usePickerItems(data.store)
+const hasTypes = computed(() => data.store.issueTypes.length > 0)
 
 const priority = computed(() => priorityOf(props.issue))
 const labels = computed(() => props.issue.labels.filter(l => !isPriorityLabel(l.name)))
@@ -54,6 +55,21 @@ const menu = computed<ContextMenuItem[][]>(() => [
     { label: 'Rename', icon: 'i-lucide-pencil', onSelect: startEdit }
   ],
   [
+    ...(hasTypes.value
+      ? [{
+          label: 'Type',
+          icon: 'i-lucide-circle-dot',
+          children: [
+            ...data.store.issueTypes.map(t => ({
+              label: t.name,
+              type: 'checkbox' as const,
+              checked: props.issue.type?.name === t.name,
+              onSelect: () => actions.setType([props.issue], t.name)
+            })),
+            { label: 'None', icon: 'i-lucide-minus', onSelect: () => actions.setType([props.issue], null) }
+          ]
+        }]
+      : []),
     {
       label: 'Priority',
       icon: 'i-lucide-signal',
@@ -86,12 +102,36 @@ const menu = computed<ContextMenuItem[][]>(() => [
   <UContextMenu :items="menu">
     <div
       ref="row"
-      class="group flex items-center gap-2 px-3 h-10 border-b border-default/60 cursor-default select-none"
+      class="group flex items-center gap-2 pe-3 h-10 border-b border-default/60 cursor-default select-none"
       :class="selected ? 'bg-primary/10' : 'hover:bg-elevated/50'"
       :data-number="issue.number"
       @click="emit('select', $event)"
       @dblclick="startEdit"
     >
+      <!-- Pin, number and type; pinned tasks get a tab-shaped marker -->
+      <div
+        class="flex items-center justify-end gap-1.5 h-7 w-24 ps-2 pe-3.5 shrink-0 text-xs font-medium tabular-nums"
+        :class="pinned ? 'bg-primary text-inverted' : 'text-muted'"
+        :style="pinned ? { clipPath: 'polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)' } : undefined"
+      >
+        <UIcon v-if="pinned" name="i-lucide-pin" class="size-3.5 me-auto" />
+        <span>#{{ issue.number }}</span>
+        <PickerMenu
+          v-if="hasTypes"
+          :items="typeItems"
+          :model-value="[issue.type?.name ?? NO_TYPE]"
+          :multiple="false"
+          variant="none"
+          size="xs"
+          search-placeholder="Type…"
+          trigger-class="p-0"
+          @commit="v => actions.setType([issue], !v[0] || v[0] === NO_TYPE ? null : v[0])"
+        >
+          <TypeDot :type="issue.type" :class="pinned ? 'ring-2 ring-white/70' : ''" />
+        </PickerMenu>
+        <TypeDot v-else-if="issue.type" :type="issue.type" />
+      </div>
+
       <UCheckbox
         :model-value="closed"
         :ui="{ base: 'rounded-full' }"
@@ -121,7 +161,6 @@ const menu = computed<ContextMenuItem[][]>(() => [
             class="truncate text-sm"
             :class="closed ? 'line-through text-muted' : 'text-highlighted'"
           >{{ issue.title }}</span>
-          <span class="text-xs text-dimmed shrink-0">#{{ issue.number }}</span>
         </template>
 
         <PickerMenu
@@ -159,8 +198,6 @@ const menu = computed<ContextMenuItem[][]>(() => [
       <span v-if="issue.comments" class="hidden sm:flex items-center gap-1 text-xs text-muted">
         <UIcon name="i-lucide-message-square" class="size-3.5" />{{ issue.comments }}
       </span>
-
-      <UIcon v-if="pinned" name="i-lucide-pin" class="size-3.5 text-primary shrink-0" />
 
       <span class="hidden lg:block w-20 text-end text-xs text-dimmed shrink-0" :title="issue.updated_at">
         {{ timeAgo(issue.updated_at) }}

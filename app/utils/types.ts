@@ -23,6 +23,15 @@ export interface GhMilestone {
   closed_issues?: number
 }
 
+// GitHub issue types (Task, Bug, Feature, ...) are defined per organisation
+export interface GhIssueType {
+  id: number
+  name: string
+  color: string | null // gray, blue, green, yellow, orange, red, pink, purple
+  description?: string | null
+  is_enabled?: boolean
+}
+
 export interface GhIssue {
   id: number
   number: number
@@ -34,6 +43,7 @@ export interface GhIssue {
   labels: GhLabel[]
   assignees: GhUser[]
   milestone: GhMilestone | null
+  type?: GhIssueType | null
   user: GhUser | null
   comments: number
   created_at: string
@@ -66,6 +76,7 @@ export interface IssuePatch {
   labels?: string[]
   assignees?: string[]
   milestone?: number | null
+  type?: string | null // issue type name, null to remove
 }
 
 export type StateFilter = 'open' | 'closed' | 'all'
@@ -91,6 +102,7 @@ export interface PickerItem {
   label: string
   avatar?: { src: string, alt?: string }
   color?: string // hex, no '#'
+  ringColor?: string // CSS colour, shown as an issue-type ring
   icon?: string
   iconClass?: string
   description?: string
