@@ -66,12 +66,16 @@ const stateMenu = computed(() => props.issue.state === 'open'
 
 const stateBadge = computed(() => {
   if (props.issue.state === 'open') {
-    return { label: 'Open', color: 'success' as const, icon: 'i-lucide-circle-dot' }
+    return { label: 'Open', icon: 'i-lucide-circle-dot', iconClass: 'text-success' }
   }
   return props.issue.state_reason === 'not_planned'
-    ? { label: 'Not planned', color: 'neutral' as const, icon: 'i-lucide-circle-slash' }
-    : { label: 'Completed', color: 'primary' as const, icon: 'i-lucide-circle-check' }
+    ? { label: 'Not planned', icon: 'i-lucide-circle-slash', iconClass: 'text-muted' }
+    : { label: 'Completed', icon: 'i-lucide-circle-check', iconClass: 'text-primary' }
 })
+
+const HEADING = PANEL_HEADING
+const SELECT = PANEL_SELECT
+const CHIP = PANEL_CHIP
 
 function setMilestone(values: string[]) {
   const v = values[0]
@@ -92,176 +96,177 @@ function setPriority(values: string[]) {
   <UDashboardPanel id="inspector" class="lg:flex-none lg:w-(--inspector-width)" :style="inspectorWidth.style.value">
     <template #header>
       <InspectorResizeHandle />
-      <UDashboardNavbar :toggle="false">
-        <template #leading>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" aria-label="Close inspector" @click="emit('close')" />
-        </template>
-        <template #title>
-          <span class="text-muted font-normal">#{{ issue.number }}</span>
-        </template>
-        <template #right>
-          <UTooltip :text="pinned ? 'Unpin' : 'Pin to top'">
-            <UButton
-              :icon="pinned ? 'i-lucide-pin-off' : 'i-lucide-pin'"
-              color="neutral"
-              variant="ghost"
-              @click="pins.togglePin(issue.number)"
-            />
-          </UTooltip>
-          <UTooltip text="Open on GitHub">
-            <UButton icon="i-lucide-external-link" color="neutral" variant="ghost" @click="openExternal(issue.html_url)" />
-          </UTooltip>
-        </template>
-      </UDashboardNavbar>
+      <!-- Title and assignees -->
+      <div class="px-5 pt-4 pb-4 border-b border-default">
+        <div class="flex items-start gap-2">
+          <UTextarea
+            v-model="title"
+            autoresize
+            :rows="1"
+            variant="none"
+            class="flex-1"
+            :ui="{ base: 'text-2xl md:text-2xl font-normal leading-snug p-0 resize-none' }"
+            @blur="saveTitle"
+            @keydown.enter.prevent="($event.target as HTMLTextAreaElement).blur()"
+            @keydown.esc="title = issue.title; ($event.target as HTMLTextAreaElement).blur()"
+          />
+          <div class="flex items-center -me-2 shrink-0">
+            <UTooltip :text="pinned ? 'Unpin' : 'Pin to top'">
+              <UButton
+                :icon="pinned ? 'i-lucide-pin-off' : 'i-lucide-pin'"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                @click="pins.togglePin(issue.number)"
+              />
+            </UTooltip>
+            <UTooltip :text="`Open #${issue.number} on GitHub`">
+              <UButton icon="i-lucide-external-link" color="neutral" variant="ghost" size="sm" @click="openExternal(issue.html_url)" />
+            </UTooltip>
+            <UTooltip text="Close" :kbds="['escape']">
+              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" aria-label="Close details" @click="emit('close')" />
+            </UTooltip>
+          </div>
+        </div>
+
+        <PickerMenu
+          :items="assigneeItems"
+          :model-value="issue.assignees.map(a => a.login)"
+          variant="none"
+          search-placeholder="Assignees…"
+          trigger-class="p-0 mt-2"
+          @commit="users => actions.setAssignees(issue, users)"
+        >
+          <span v-if="issue.assignees.length" class="flex flex-wrap gap-1.5">
+            <span v-for="a in issue.assignees" :key="a.login" :class="CHIP">
+              <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+            </span>
+          </span>
+          <span v-else class="text-sm text-dimmed">Assign someone</span>
+        </PickerMenu>
+      </div>
     </template>
 
     <template #body>
-      <div class="space-y-6">
-        <UTextarea
-          v-model="title"
-          autoresize
-          :rows="1"
-          variant="none"
-          class="w-full"
-          :ui="{ base: 'text-lg font-semibold p-0 resize-none' }"
-          @blur="saveTitle"
-          @keydown.enter.prevent="($event.target as HTMLTextAreaElement).blur()"
-          @keydown.esc="title = issue.title; ($event.target as HTMLTextAreaElement).blur()"
-        />
+      <div class="space-y-5">
+        <section>
+          <h3 :class="HEADING">
+            Opened
+          </h3>
+          <p class="flex flex-wrap items-center gap-1.5 text-[15px] text-default">
+            <span>{{ formatDateTime(issue.created_at) }} by</span>
+            <span :class="CHIP">
+              <UAvatar :src="issue.user?.avatar_url" :alt="issue.user?.login" size="3xs" />{{ issue.user?.login }}
+            </span>
+          </p>
+          <p v-if="issue.closed_at" class="mt-1 text-sm text-muted">
+            Closed {{ formatDateTime(issue.closed_at) }}
+          </p>
+        </section>
 
-        <div class="flex items-center gap-2 text-xs text-muted -mt-4">
-          <UAvatar :src="issue.user?.avatar_url" size="3xs" />
-          <span>{{ issue.user?.login }} opened {{ timeAgo(issue.created_at) }}</span>
-          <span v-if="issue.closed_at">· closed {{ timeAgo(issue.closed_at) }}</span>
-        </div>
-
-        <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1.5 items-center text-sm">
-          <dt class="text-muted">
-            Status
-          </dt>
-          <dd>
-            <UDropdownMenu :items="stateMenu" :content="{ align: 'start' }">
-              <UButton
-                :label="stateBadge.label"
-                :icon="stateBadge.icon"
-                :color="stateBadge.color"
-                variant="soft"
-                size="sm"
-                trailing-icon="i-lucide-chevron-down"
-              />
-            </UDropdownMenu>
-          </dd>
-
-          <template v-if="data.store.issueTypes.length || issue.type">
-            <dt class="text-muted">
+        <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+          <section v-if="data.store.issueTypes.length || issue.type">
+            <h3 :class="HEADING">
               Type
-            </dt>
-            <dd>
-              <PickerMenu
-                :items="typeItems"
-                :model-value="[issue.type?.name ?? NO_TYPE]"
-                :multiple="false"
-                search-placeholder="Type…"
-                @commit="setType"
-              >
-                <span v-if="issue.type" class="flex items-center gap-1.5">
-                  <TypeDot :type="issue.type" />{{ issue.type.name }}
-                </span>
-                <span v-else class="text-dimmed">None</span>
-              </PickerMenu>
-            </dd>
-          </template>
-
-          <dt class="text-muted">
-            Priority
-          </dt>
-          <dd>
+            </h3>
             <PickerMenu
-              :items="priorityItems"
-              :model-value="[priority?.key ?? NO_PRIORITY]"
+              :items="typeItems"
+              :model-value="[issue.type?.name ?? NO_TYPE]"
               :multiple="false"
-              search-placeholder="Priority…"
-              @commit="setPriority"
+              v-bind="SELECT"
+              search-placeholder="Type…"
+              @commit="setType"
             >
-              <span v-if="priority" class="flex items-center gap-1.5">
-                <UIcon :name="priority.icon" class="size-4" :class="priority.class" />{{ priority.title }}
+              <span v-if="issue.type" class="flex items-center gap-2">
+                <TypeDot :type="issue.type" />{{ issue.type.name }}
               </span>
               <span v-else class="text-dimmed">None</span>
             </PickerMenu>
-          </dd>
+          </section>
 
-          <dt class="text-muted">
-            Assignees
-          </dt>
-          <dd>
-            <PickerMenu
-              :items="assigneeItems"
-              :model-value="issue.assignees.map(a => a.login)"
-              search-placeholder="Assignees…"
-              @commit="users => actions.setAssignees(issue, users)"
-            >
-              <span v-if="issue.assignees.length" class="flex flex-wrap items-center gap-2">
-                <span v-for="a in issue.assignees" :key="a.login" class="flex items-center gap-1">
-                  <UAvatar :src="a.avatar_url" size="3xs" />{{ a.login }}
-                </span>
-              </span>
-              <span v-else class="text-dimmed">No one</span>
-            </PickerMenu>
-          </dd>
-
-          <dt class="text-muted">
-            Labels
-          </dt>
-          <dd>
-            <PickerMenu
-              :items="labelItems"
-              :model-value="labels.map(l => l.name)"
-              creatable
-              search-placeholder="Labels…"
-              @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
-            >
-              <span v-if="labels.length" class="flex flex-wrap gap-1">
-                <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
-              </span>
-              <span v-else class="text-dimmed">None</span>
-            </PickerMenu>
-          </dd>
-
-          <dt class="text-muted">
-            Milestone
-          </dt>
-          <dd>
+          <section>
+            <h3 :class="HEADING">
+              Milestone
+            </h3>
             <PickerMenu
               :items="milestoneItems"
               :model-value="[issue.milestone ? String(issue.milestone.number) : NO_MILESTONE]"
               :multiple="false"
+              v-bind="SELECT"
               search-placeholder="Milestones…"
               @commit="setMilestone"
             >
-              <span v-if="issue.milestone" class="flex items-center gap-1.5">
-                <UIcon name="i-lucide-milestone" class="size-4 text-muted" />{{ issue.milestone.title }}
+              <span v-if="issue.milestone" class="truncate">{{ issue.milestone.title }}</span>
+              <span v-else class="text-dimmed">None</span>
+            </PickerMenu>
+          </section>
+
+          <section>
+            <h3 :class="HEADING">
+              Priority
+            </h3>
+            <PickerMenu
+              :items="priorityItems"
+              :model-value="[priority?.key ?? NO_PRIORITY]"
+              :multiple="false"
+              v-bind="SELECT"
+              search-placeholder="Priority…"
+              @commit="setPriority"
+            >
+              <span v-if="priority" class="flex items-center gap-2">
+                <UIcon :name="priority.icon" class="size-4" :class="priority.class" />{{ priority.title }}
               </span>
               <span v-else class="text-dimmed">None</span>
             </PickerMenu>
-          </dd>
-        </dl>
+          </section>
 
-        <USeparator />
+          <section>
+            <h3 :class="HEADING">
+              Status
+            </h3>
+            <UDropdownMenu :items="stateMenu" :content="{ align: 'start' }">
+              <UButton
+                color="neutral"
+                variant="soft"
+                block
+                trailing-icon="i-lucide-chevrons-up-down"
+                class="justify-start font-normal"
+                :ui="{ trailingIcon: 'ms-auto text-default' }"
+              >
+                <UIcon :name="stateBadge.icon" class="size-4" :class="stateBadge.iconClass" />{{ stateBadge.label }}
+              </UButton>
+            </UDropdownMenu>
+          </section>
+        </div>
 
         <section>
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-semibold">
+          <h3 :class="HEADING">
+            Labels
+          </h3>
+          <PickerMenu
+            :items="labelItems"
+            :model-value="labels.map(l => l.name)"
+            variant="none"
+            creatable
+            search-placeholder="Labels…"
+            trigger-class="p-0 w-full"
+            @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
+          >
+            <span v-if="labels.length" class="flex flex-wrap gap-1.5">
+              <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
+            </span>
+            <span v-else class="text-[15px] text-dimmed">Enter labels</span>
+          </PickerMenu>
+        </section>
+
+        <section>
+          <div class="flex items-center justify-between">
+            <h3 :class="HEADING">
               Description
             </h3>
-            <UButton
-              v-if="!editingBody"
-              icon="i-lucide-pencil"
-              label="Edit"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              @click="editBody"
-            />
+            <UTooltip v-if="!editingBody" text="Edit description">
+              <UButton icon="i-lucide-pencil-line" size="xs" color="primary" variant="link" class="-me-1 -mt-1.5" @click="editBody" />
+            </UTooltip>
           </div>
           <MarkdownEditor
             v-if="editingBody"
@@ -278,9 +283,9 @@ function setPriority(values: string[]) {
           </MarkdownEditor>
           <USkeleton v-else-if="loadingBody" class="h-20 w-full" />
           <!-- eslint-disable-next-line vue/no-v-html -- sanitised by GitHub -->
-          <div v-else-if="issue.body_html" class="markdown-body" @click="interceptLinks" @dblclick="editBody" v-html="issue.body_html" />
-          <button v-else type="button" class="text-sm text-dimmed italic" @click="editBody">
-            No description — click to add one
+          <div v-else-if="issue.body_html" class="markdown-body text-[15px]" @click="interceptLinks" @dblclick="editBody" v-html="issue.body_html" />
+          <button v-else type="button" class="text-[15px] text-dimmed" @click="editBody">
+            Add a description
           </button>
         </section>
 

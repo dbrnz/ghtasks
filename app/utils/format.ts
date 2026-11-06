@@ -26,6 +26,10 @@ export function formatDate(date: string | null | undefined): string {
   return date ? new Date(date).toLocaleDateString(undefined, { dateStyle: 'medium' }) : ''
 }
 
+export function formatDateTime(date: string | null | undefined): string {
+  return date ? new Date(date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : ''
+}
+
 export function repoKey(owner: string, name: string): string {
   return `${owner}/${name}`.toLowerCase()
 }

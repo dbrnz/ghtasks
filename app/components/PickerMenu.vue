@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
   variant?: 'outline' | 'soft' | 'subtle' | 'ghost' | 'none'
   triggerClass?: string
   searchPlaceholder?: string
+  trailingIcon?: string
 }>(), {
   multiple: true,
   size: 'sm',
@@ -77,7 +78,7 @@ function onCreate(name: string) {
     :variant="variant"
     :create-item="creatable ? 'always' : false"
     :search-input="{ placeholder: searchPlaceholder ?? 'Filter…' }"
-    :trailing-icon="variant === 'none' ? '' : undefined"
+    :trailing-icon="variant === 'none' ? '' : trailingIcon"
     :content="{ align: 'start' }"
     :ui="{ content: 'min-w-60' }"
     :class="triggerClass"

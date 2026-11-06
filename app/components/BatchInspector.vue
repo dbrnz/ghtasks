@@ -40,137 +40,181 @@ function applyDiff(before: string[], after: string[], add: (v: string) => Promis
 }
 
 const allPinned = computed(() => props.issues.every(i => pins.isPinned(i.number)))
-const anyOpen = computed(() => props.issues.some(i => i.state === 'open'))
+const openCount = computed(() => props.issues.filter(i => i.state === 'open').length)
+
+const stateMenu = computed(() => [[
+  { label: 'Close as completed', icon: 'i-lucide-circle-check', disabled: !openCount.value, onSelect: () => run(() => actions.setState(props.issues, 'closed', 'completed')) },
+  { label: 'Close as not planned', icon: 'i-lucide-circle-slash', disabled: !openCount.value, onSelect: () => run(() => actions.setState(props.issues, 'closed', 'not_planned')) },
+  { label: 'Reopen', icon: 'i-lucide-rotate-ccw', disabled: openCount.value === props.issues.length, onSelect: () => run(() => actions.setState(props.issues, 'open')) }
+]])
+
+const stateSummary = computed(() => {
+  const open = openCount.value
+  const closed = props.issues.length - open
+  return [open && `${open} open`, closed && `${closed} closed`].filter(Boolean).join(', ')
+})
+
+const HEADING = PANEL_HEADING
+const SELECT = PANEL_SELECT
+const CHIP = PANEL_CHIP
 </script>
 
 <template>
   <UDashboardPanel id="inspector" class="lg:flex-none lg:w-(--inspector-width)" :style="inspectorWidth.style.value">
     <template #header>
       <InspectorResizeHandle />
-      <UDashboardNavbar :toggle="false" :title="`${issues.length} tasks selected`">
-        <template #leading>
-          <UButton icon="i-lucide-x" color="neutral" variant="ghost" aria-label="Clear selection" @click="emit('close')" />
-        </template>
-        <template #right>
-          <UIcon v-if="busy" name="i-lucide-loader-circle" class="size-5 animate-spin text-muted" />
-        </template>
-      </UDashboardNavbar>
+      <!-- Selection summary -->
+      <div class="px-5 pt-4 pb-4 border-b border-default">
+        <div class="flex items-start gap-2">
+          <h2 class="flex-1 text-2xl leading-snug text-highlighted">
+            {{ issues.length }} tasks selected
+          </h2>
+          <div class="flex items-center -me-2 shrink-0">
+            <UIcon v-if="busy" name="i-lucide-loader-circle" class="size-4 mx-2 animate-spin text-muted" />
+            <UTooltip :text="allPinned ? 'Unpin all' : 'Pin all to top'">
+              <UButton
+                :icon="allPinned ? 'i-lucide-pin-off' : 'i-lucide-pin'"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                @click="pins.setPinned(issues.map(i => i.number), !allPinned)"
+              />
+            </UTooltip>
+            <UTooltip text="Clear selection" :kbds="['escape']">
+              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" aria-label="Clear selection" @click="emit('close')" />
+            </UTooltip>
+          </div>
+        </div>
+        <p class="mt-2 text-sm text-muted">
+          {{ stateSummary }} · changes apply to every selected task
+        </p>
+      </div>
     </template>
 
     <template #body>
-      <div class="space-y-6">
-        <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-2 items-center text-sm">
-          <template v-if="data.store.issueTypes.length">
-            <dt class="text-muted">
+      <div class="space-y-5">
+        <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+          <section v-if="data.store.issueTypes.length">
+            <h3 :class="HEADING">
               Type
-            </dt>
-            <dd>
-              <PickerMenu
-                :items="typeItems"
-                :model-value="[]"
-                :multiple="false"
-                placeholder="Set type…"
-                variant="outline"
-                @commit="v => run(() => actions.setType(issues, !v[0] || v[0] === NO_TYPE ? null : v[0]))"
-              />
-            </dd>
-          </template>
-
-          <dt class="text-muted">
-            Priority
-          </dt>
-          <dd>
+            </h3>
             <PickerMenu
-              :items="priorityItems"
+              :items="typeItems"
               :model-value="[]"
               :multiple="false"
-              placeholder="Set priority…"
-              variant="outline"
-              @commit="v => run(() => actions.setPriority(issues, PRIORITIES.find(p => p.key === v[0])))"
+              v-bind="SELECT"
+              placeholder="Set type…"
+              search-placeholder="Type…"
+              @commit="v => run(() => actions.setType(issues, !v[0] || v[0] === NO_TYPE ? null : v[0]))"
             />
-          </dd>
+          </section>
 
-          <dt class="text-muted">
-            Assignees
-          </dt>
-          <dd>
-            <PickerMenu
-              :items="assigneeItems"
-              :model-value="commonAssignees"
-              placeholder="Add or remove…"
-              variant="outline"
-              @commit="v => applyDiff(commonAssignees, v, u => actions.addAssignee(issues, u), u => actions.removeAssignee(issues, u))"
-            />
-          </dd>
-
-          <dt class="text-muted">
-            Labels
-          </dt>
-          <dd>
-            <PickerMenu
-              :items="labelItems"
-              :model-value="commonLabels"
-              placeholder="Add or remove…"
-              variant="outline"
-              creatable
-              @commit="v => applyDiff(commonLabels, v, l => actions.addLabel(issues, l), l => actions.removeLabel(issues, l))"
-            />
-          </dd>
-
-          <dt class="text-muted">
-            Milestone
-          </dt>
-          <dd>
+          <section>
+            <h3 :class="HEADING">
+              Milestone
+            </h3>
             <PickerMenu
               :items="milestoneItems"
               :model-value="[]"
               :multiple="false"
+              v-bind="SELECT"
               placeholder="Set milestone…"
-              variant="outline"
+              search-placeholder="Milestones…"
               @commit="v => run(() => actions.setMilestone(issues, !v[0] || v[0] === NO_MILESTONE ? null : Number(v[0])))"
             />
-          </dd>
-        </dl>
+          </section>
 
-        <div class="flex flex-wrap gap-2">
-          <UButton
-            v-if="anyOpen"
-            icon="i-lucide-circle-check"
-            label="Close all"
-            color="neutral"
-            variant="outline"
-            @click="run(() => actions.setState(issues, 'closed'))"
-          />
-          <UButton
-            v-else
-            icon="i-lucide-rotate-ccw"
-            label="Reopen all"
-            color="neutral"
-            variant="outline"
-            @click="run(() => actions.setState(issues, 'open'))"
-          />
-          <UButton
-            :icon="allPinned ? 'i-lucide-pin-off' : 'i-lucide-pin'"
-            :label="allPinned ? 'Unpin all' : 'Pin all'"
-            color="neutral"
-            variant="outline"
-            @click="pins.setPinned(issues.map(i => i.number), !allPinned)"
-          />
+          <section>
+            <h3 :class="HEADING">
+              Priority
+            </h3>
+            <PickerMenu
+              :items="priorityItems"
+              :model-value="[]"
+              :multiple="false"
+              v-bind="SELECT"
+              placeholder="Set priority…"
+              search-placeholder="Priority…"
+              @commit="v => run(() => actions.setPriority(issues, PRIORITIES.find(p => p.key === v[0])))"
+            />
+          </section>
+
+          <section>
+            <h3 :class="HEADING">
+              Status
+            </h3>
+            <UDropdownMenu :items="stateMenu" :content="{ align: 'start' }">
+              <UButton
+                label="Set status…"
+                color="neutral"
+                variant="soft"
+                block
+                trailing-icon="i-lucide-chevrons-up-down"
+                class="justify-start font-normal text-dimmed"
+                :ui="{ trailingIcon: 'ms-auto text-default' }"
+              />
+            </UDropdownMenu>
+          </section>
         </div>
+
+        <section>
+          <h3 :class="HEADING">
+            Assignees
+          </h3>
+          <PickerMenu
+            :items="assigneeItems"
+            :model-value="commonAssignees"
+            variant="none"
+            search-placeholder="Assignees…"
+            trigger-class="p-0 w-full"
+            @commit="v => applyDiff(commonAssignees, v, u => actions.addAssignee(issues, u), u => actions.removeAssignee(issues, u))"
+          >
+            <span v-if="commonAssignees.length" class="flex flex-wrap gap-1.5">
+              <span v-for="login in commonAssignees" :key="login" :class="CHIP">
+                <UAvatar :src="data.store.assignees.find(a => a.login === login)?.avatar_url" :alt="login" size="3xs" />{{ login }}
+              </span>
+            </span>
+            <span v-else class="text-[15px] text-dimmed">Add or remove assignees</span>
+          </PickerMenu>
+        </section>
+
+        <section>
+          <h3 :class="HEADING">
+            Labels
+          </h3>
+          <PickerMenu
+            :items="labelItems"
+            :model-value="commonLabels"
+            variant="none"
+            creatable
+            search-placeholder="Labels…"
+            trigger-class="p-0 w-full"
+            @commit="v => applyDiff(commonLabels, v, l => actions.addLabel(issues, l), l => actions.removeLabel(issues, l))"
+          >
+            <span v-if="commonLabels.length" class="flex flex-wrap gap-1.5">
+              <template v-for="name in commonLabels" :key="name">
+                <LabelBadge v-if="data.store.labels.find(l => l.name === name)" :label="data.store.labels.find(l => l.name === name)!" />
+              </template>
+            </span>
+            <span v-else class="text-[15px] text-dimmed">Add or remove labels</span>
+          </PickerMenu>
+        </section>
 
         <USeparator />
 
-        <ul class="space-y-1 text-sm">
-          <li v-for="issue in issues" :key="issue.number" class="flex items-center gap-2 truncate">
-            <UIcon
-              :name="issue.state === 'open' ? 'i-lucide-circle-dot' : 'i-lucide-circle-check'"
-              class="size-4 shrink-0"
-              :class="issue.state === 'open' ? 'text-success' : 'text-primary'"
-            />
-            <span class="text-dimmed">#{{ issue.number }}</span>
-            <span class="truncate">{{ issue.title }}</span>
-          </li>
-        </ul>
+        <section>
+          <h3 :class="HEADING">
+            Selected tasks
+          </h3>
+          <ul class="space-y-1.5">
+            <li v-for="issue in issues" :key="issue.number" class="flex items-start gap-2 text-[15px] leading-5">
+              <span class="flex items-center justify-end gap-1.5 w-14 h-5 shrink-0 text-xs font-semibold text-muted tabular-nums">
+                #{{ issue.number }}<TypeDot v-if="issue.type" :type="issue.type" size="sm" />
+              </span>
+              <span :class="issue.state === 'closed' ? 'line-through text-muted' : 'text-highlighted'">{{ issue.title }}</span>
+            </li>
+          </ul>
+        </section>
       </div>
     </template>
   </UDashboardPanel>

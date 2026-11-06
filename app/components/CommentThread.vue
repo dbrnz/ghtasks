@@ -91,9 +91,8 @@ function commentMenu(comment: GhComment) {
 
 <template>
   <section class="space-y-4">
-    <h3 class="text-sm font-semibold flex items-center gap-2">
-      Comments
-      <UBadge v-if="issue.comments" :label="String(issue.comments)" size="sm" color="neutral" variant="soft" />
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
+      Comments<span v-if="issue.comments"> ({{ issue.comments }})</span>
     </h3>
 
     <div v-if="loading && !comments.length" class="space-y-3">
