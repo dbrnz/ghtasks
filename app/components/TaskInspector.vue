@@ -6,6 +6,7 @@ const props = defineProps<{ issue: GhIssue }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { data, actions, pins } = useTasksContext()
+const inspectorWidth = useInspectorWidth()
 const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems } = usePickerItems(data.store)
 
 const priority = computed(() => priorityOf(props.issue))
@@ -88,8 +89,9 @@ function setPriority(values: string[]) {
 </script>
 
 <template>
-  <UDashboardPanel id="inspector" resizable :default-size="38" :min-size="25" :max-size="60">
+  <UDashboardPanel id="inspector" class="lg:flex-none lg:w-(--inspector-width)" :style="inspectorWidth.style.value">
     <template #header>
+      <InspectorResizeHandle />
       <UDashboardNavbar :toggle="false">
         <template #leading>
           <UButton icon="i-lucide-x" color="neutral" variant="ghost" aria-label="Close inspector" @click="emit('close')" />

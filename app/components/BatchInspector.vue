@@ -7,6 +7,7 @@ const props = defineProps<{ issues: GhIssue[] }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { data, actions, pins } = useTasksContext()
+const inspectorWidth = useInspectorWidth()
 const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems } = usePickerItems(data.store)
 
 const busy = ref(false)
@@ -43,8 +44,9 @@ const anyOpen = computed(() => props.issues.some(i => i.state === 'open'))
 </script>
 
 <template>
-  <UDashboardPanel id="inspector" resizable :default-size="38" :min-size="25" :max-size="60">
+  <UDashboardPanel id="inspector" class="lg:flex-none lg:w-(--inspector-width)" :style="inspectorWidth.style.value">
     <template #header>
+      <InspectorResizeHandle />
       <UDashboardNavbar :toggle="false" :title="`${issues.length} tasks selected`">
         <template #leading>
           <UButton icon="i-lucide-x" color="neutral" variant="ghost" aria-label="Clear selection" @click="emit('close')" />
