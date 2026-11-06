@@ -15,6 +15,8 @@ const props = withDefaults(defineProps<{
   triggerClass?: string
   searchPlaceholder?: string
   trailingIcon?: string
+  /** An extra entry at the end of the menu, e.g. "New Milestone…" */
+  action?: { label: string, icon?: string }
 }>(), {
   multiple: true,
   size: 'sm',
@@ -23,7 +25,15 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   commit: [value: string[]]
+  action: []
 }>()
+
+const open = ref(false)
+
+function runAction() {
+  open.value = false
+  nextTick(() => emit('action'))
+}
 
 const draft = ref<string[]>([...props.modelValue])
 watch(() => props.modelValue, (v) => { draft.value = [...v] })
@@ -69,6 +79,7 @@ function onCreate(name: string) {
 <template>
   <USelectMenu
     v-model="model"
+    v-model:open="open"
     :items="allItems"
     value-key="value"
     label-key="label"
@@ -98,6 +109,20 @@ function onCreate(name: string) {
       />
       <span v-else-if="item.color" class="size-3 rounded-full shrink-0 ms-0.5" :style="{ backgroundColor: `#${item.color}` }" />
       <UIcon v-else-if="item.icon" :name="item.icon" class="size-4" :class="item.iconClass" />
+    </template>
+    <template v-if="action" #content-bottom>
+      <div class="p-1 border-t border-default">
+        <UButton
+          :label="action.label"
+          :icon="action.icon"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          block
+          class="justify-start font-normal"
+          @click="runAction"
+        />
+      </div>
     </template>
   </USelectMenu>
 </template>

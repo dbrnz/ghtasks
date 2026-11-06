@@ -236,6 +236,14 @@ export function useRepoData(owner: string, name: string) {
   }
 
   /** Make sure labels exist in the repo, creating any that don't. */
+  async function createMilestone(title: string, dueOn?: string): Promise<GhMilestone> {
+    const gh = octokit()
+    const { data } = await gh.rest.issues.createMilestone({ ...base, title, due_on: dueOn })
+    const milestone = data as GhMilestone
+    s.milestones = [...s.milestones, milestone]
+    return milestone
+  }
+
   async function ensureLabels(labels: { name: string, color?: string }[]) {
     const gh = octokit()
     for (const label of labels) {
@@ -309,6 +317,7 @@ export function useRepoData(owner: string, name: string) {
     updateIssue,
     createIssue,
     ensureLabels,
+    createMilestone,
     listComments,
     addComment,
     updateComment,

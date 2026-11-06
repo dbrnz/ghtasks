@@ -120,6 +120,8 @@ const CHIP = PANEL_CHIP
               v-bind="SELECT"
               placeholder="Set milestone…"
               search-placeholder="Milestones…"
+              :action="{ label: 'New Milestone…', icon: 'i-lucide-circle-plus' }"
+              @action="run(() => actions.newMilestone(issues))"
               @commit="v => run(() => actions.setMilestone(issues, !v[0] || v[0] === NO_MILESTONE ? null : Number(v[0])))"
             />
           </section>

@@ -74,6 +74,7 @@ const stateBadge = computed(() => {
 })
 
 const HEADING = PANEL_HEADING
+const NEW_MILESTONE = { label: 'New Milestone…', icon: 'i-lucide-circle-plus' }
 const SELECT = PANEL_SELECT
 const CHIP = PANEL_CHIP
 
@@ -194,7 +195,9 @@ function setPriority(values: string[]) {
               :multiple="false"
               v-bind="SELECT"
               search-placeholder="Milestones…"
+              :action="NEW_MILESTONE"
               @commit="setMilestone"
+              @action="actions.newMilestone([issue])"
             >
               <span v-if="issue.milestone" class="truncate">{{ issue.milestone.title }}</span>
               <span v-else class="text-dimmed">None</span>

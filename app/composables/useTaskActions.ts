@@ -7,6 +7,7 @@ import type { RepoData } from './useRepoData'
 
 export function useTaskActions(data: RepoData) {
   const toast = useToast()
+  const dialogs = useDialogs()
   const s = data.store
 
   async function attempt<T>(title: string, fn: () => Promise<T>): Promise<T | undefined> {
@@ -106,6 +107,20 @@ export function useTaskActions(data: RepoData) {
     }, 'remove assignee')
   }
 
+  /** Create a milestone, asking for its title, and then put the issues in it. */
+  async function newMilestone(issues: GhIssue[]) {
+    const title = await dialogs.prompt('New Milestone', { placeholder: 'Milestone title', confirmLabel: 'Create' })
+    if (!title) {
+      return undefined
+    }
+    const existing = s.milestones.find(m => m.title.toLowerCase() === title.toLowerCase())
+    const milestone = existing ?? await attempt('Unable to create milestone', () => data.createMilestone(title))
+    if (milestone) {
+      await setMilestone(issues, milestone.number)
+    }
+    return milestone
+  }
+
   function setMilestone(issues: GhIssue[], milestone: number | null) {
     return update(issues, i => (i.milestone?.number ?? null) === milestone ? null : { milestone }, 'set milestone')
   }
@@ -160,6 +175,7 @@ export function useTaskActions(data: RepoData) {
     addAssignee,
     removeAssignee,
     setMilestone,
+    newMilestone,
     setType,
     setPriority,
     create
