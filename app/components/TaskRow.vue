@@ -1,0 +1,185 @@
+<script setup lang="ts">
+import type { ContextMenuItem } from '@nuxt/ui'
+import type { GhIssue, GroupBy } from '~/utils/types'
+
+const props = defineProps<{
+  issue: GhIssue
+  selected: boolean
+  groupBy: GroupBy
+}>()
+
+const emit = defineEmits<{
+  select: [event: MouseEvent]
+}>()
+
+const { data, actions, pins } = useTasksContext()
+const { labelItems, assigneeItems } = usePickerItems(data.store)
+
+const priority = computed(() => priorityOf(props.issue))
+const labels = computed(() => props.issue.labels.filter(l => !isPriorityLabel(l.name)))
+const closed = computed(() => props.issue.state === 'closed')
+const pinned = computed(() => pins.isPinned(props.issue.number))
+
+// Inline title editing
+const editing = ref(false)
+const draftTitle = ref('')
+const titleInput = useTemplateRef<{ inputRef: HTMLInputElement }>('titleInput')
+
+function startEdit() {
+  draftTitle.value = props.issue.title
+  editing.value = true
+  nextTick(() => titleInput.value?.inputRef?.select())
+}
+
+async function finishEdit(save: boolean) {
+  if (!editing.value) {
+    return
+  }
+  editing.value = false
+  if (save) {
+    await actions.rename(props.issue, draftTitle.value)
+  }
+}
+
+const row = useTemplateRef<HTMLElement>('row')
+watch(() => props.selected, (selected) => {
+  if (selected) {
+    row.value?.scrollIntoView({ block: 'nearest' })
+  }
+})
+
+const menu = computed<ContextMenuItem[][]>(() => [
+  [
+    { label: pinned.value ? 'Unpin' : 'Pin to top', icon: pinned.value ? 'i-lucide-pin-off' : 'i-lucide-pin', onSelect: () => pins.togglePin(props.issue.number) },
+    { label: 'Rename', icon: 'i-lucide-pencil', onSelect: startEdit }
+  ],
+  [
+    {
+      label: 'Priority',
+      icon: 'i-lucide-signal',
+      children: [
+        ...PRIORITIES.map(p => ({
+          label: p.title,
+          icon: p.icon,
+          type: 'checkbox' as const,
+          checked: priority.value?.key === p.key,
+          onSelect: () => actions.setPriority([props.issue], p)
+        })),
+        { label: 'None', icon: 'i-lucide-minus', onSelect: () => actions.setPriority([props.issue], undefined) }
+      ]
+    }
+  ],
+  closed.value
+    ? [{ label: 'Reopen', icon: 'i-lucide-rotate-ccw', onSelect: () => actions.setState([props.issue], 'open') }]
+    : [
+        { label: 'Close as completed', icon: 'i-lucide-circle-check', onSelect: () => actions.setState([props.issue], 'closed', 'completed') },
+        { label: 'Close as not planned', icon: 'i-lucide-circle-slash', onSelect: () => actions.setState([props.issue], 'closed', 'not_planned') }
+      ],
+  [
+    { label: 'Open on GitHub', icon: 'i-lucide-external-link', onSelect: () => openExternal(props.issue.html_url) },
+    { label: 'Copy link', icon: 'i-lucide-link', onSelect: () => navigator.clipboard.writeText(props.issue.html_url) }
+  ]
+])
+</script>
+
+<template>
+  <UContextMenu :items="menu">
+    <div
+      ref="row"
+      class="group flex items-center gap-2 px-3 h-10 border-b border-default/60 cursor-default select-none"
+      :class="selected ? 'bg-primary/10' : 'hover:bg-elevated/50'"
+      :data-number="issue.number"
+      @click="emit('select', $event)"
+      @dblclick="startEdit"
+    >
+      <UCheckbox
+        :model-value="closed"
+        :ui="{ base: 'rounded-full' }"
+        :aria-label="closed ? 'Reopen' : 'Close'"
+        @click.stop
+        @update:model-value="actions.toggleState(issue)"
+      />
+
+      <UTooltip v-if="priority" :text="`${priority.title} priority`">
+        <UIcon :name="priority.icon" class="size-4 shrink-0" :class="priority.class" />
+      </UTooltip>
+
+      <div class="flex-1 min-w-0 flex items-center gap-2">
+        <UInput
+          v-if="editing"
+          ref="titleInput"
+          v-model="draftTitle"
+          size="sm"
+          class="flex-1"
+          @click.stop
+          @keydown.enter.prevent="finishEdit(true)"
+          @keydown.esc.stop.prevent="finishEdit(false)"
+          @blur="finishEdit(true)"
+        />
+        <template v-else>
+          <span
+            class="truncate text-sm"
+            :class="closed ? 'line-through text-muted' : 'text-highlighted'"
+          >{{ issue.title }}</span>
+          <span class="text-xs text-dimmed shrink-0">#{{ issue.number }}</span>
+        </template>
+
+        <PickerMenu
+          v-if="!editing"
+          :items="labelItems"
+          :model-value="labels.map(l => l.name)"
+          variant="none"
+          size="xs"
+          creatable
+          search-placeholder="Labels…"
+          trigger-class="p-0 min-w-0 shrink"
+          @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
+        >
+          <span class="flex items-center gap-1 min-w-0 overflow-hidden">
+            <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
+            <UIcon
+              v-if="!labels.length"
+              name="i-lucide-tag"
+              class="size-3.5 text-dimmed opacity-0 group-hover:opacity-100"
+            />
+          </span>
+        </PickerMenu>
+      </div>
+
+      <UBadge
+        v-if="issue.milestone && groupBy !== 'milestone'"
+        :label="issue.milestone.title"
+        icon="i-lucide-milestone"
+        color="neutral"
+        variant="outline"
+        size="sm"
+        class="hidden md:inline-flex max-w-36 truncate"
+      />
+
+      <span v-if="issue.comments" class="hidden sm:flex items-center gap-1 text-xs text-muted">
+        <UIcon name="i-lucide-message-square" class="size-3.5" />{{ issue.comments }}
+      </span>
+
+      <UIcon v-if="pinned" name="i-lucide-pin" class="size-3.5 text-primary shrink-0" />
+
+      <span class="hidden lg:block w-20 text-end text-xs text-dimmed shrink-0" :title="issue.updated_at">
+        {{ timeAgo(issue.updated_at) }}
+      </span>
+
+      <PickerMenu
+        :items="assigneeItems"
+        :model-value="issue.assignees.map(a => a.login)"
+        variant="none"
+        size="xs"
+        search-placeholder="Assignees…"
+        trigger-class="p-0 w-16 justify-end"
+        @commit="users => actions.setAssignees(issue, users)"
+      >
+        <UAvatarGroup v-if="issue.assignees.length" size="2xs" :max="3">
+          <UAvatar v-for="a in issue.assignees" :key="a.login" :src="a.avatar_url" :alt="a.login" />
+        </UAvatarGroup>
+        <UIcon v-else name="i-lucide-user-plus" class="size-4 text-dimmed opacity-0 group-hover:opacity-100" />
+      </PickerMenu>
+    </div>
+  </UContextMenu>
+</template>

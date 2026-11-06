@@ -7,15 +7,49 @@ export default defineNuxtConfig({
     '@nuxt/ui'
   ],
 
-  // Disable Server Side Rendering
+  css: ['~/assets/css/main.css'],
+
+  // Disable Server Side Rendering -- Tauri serves a static, client-rendered app
   ssr: false,
 
-  // Optional: Configure Vite for better compatibility with Tauri
+  // Bundle the icons we use so the app works offline (no Iconify API calls)
+  icon: {
+    provider: 'none',
+    clientBundle: {
+      scan: true,
+      includeCustomCollections: true
+    }
+  },
+
+  // Don't load fonts from Google at runtime
+  fonts: {
+    providers: {
+      google: false,
+      googleicons: false
+    }
+  },
+
+  // Make the dev server reachable from a Tauri mobile device/emulator
+  devServer: {
+    host: process.env.TAURI_DEV_HOST || 'localhost'
+  },
+
+  // Configure Vite for better compatibility with Tauri
   vite: {
     clearScreen: false,
     envPrefix: ['VITE_', 'TAURI_'],
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'octokit'
+      ]
+    },
     server: {
       strictPort: true,
     },
   },
+
+  // Ignore Tauri's Rust sources when watching for changes
+  ignore: ['**/src-tauri/**']
 })

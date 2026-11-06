@@ -1,0 +1,21 @@
+import ConfirmModal from '~/components/ConfirmModal.vue'
+import PromptModal from '~/components/PromptModal.vue'
+
+// Promise-based replacements for window.confirm()/prompt(), which aren't
+// available in every Tauri webview.
+
+export function useDialogs() {
+  const overlay = useOverlay()
+  const confirmModal = overlay.create(ConfirmModal)
+  const promptModal = overlay.create(PromptModal)
+
+  async function confirm(title: string, options: { description?: string, confirmLabel?: string, danger?: boolean } = {}): Promise<boolean> {
+    return !!(await confirmModal.open({ title, ...options }).result)
+  }
+
+  async function prompt(title: string, options: { placeholder?: string, initial?: string, confirmLabel?: string } = {}): Promise<string | null> {
+    return (await promptModal.open({ title, ...options }).result) ?? null
+  }
+
+  return { confirm, prompt }
+}
