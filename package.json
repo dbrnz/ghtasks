@@ -29,5 +29,6 @@
     "@types/node": "^26.6.6",
     "typescript": "^5.9",
     "vue-tsc": "^3.3.14"
-  }
+  },
+  "license": "MIT"
 }

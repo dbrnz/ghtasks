@@ -2,8 +2,8 @@
 name = "ghtasks"
 version = "0.1.0"
 description = "Manage GitHub issues as tasks"
-authors = ["you"]
-license = ""
+authors = ["David Brooks"]
+license = "MIT"
 repository = ""
 edition = "2024"
 rust-version = "1.90"

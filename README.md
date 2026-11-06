@@ -48,3 +48,7 @@ bun run tauri build   # bundle (runs `nuxt generate` → .output/public)
 - `app/pages/[owner]/[repo].vue`: the task list (filtering, grouping, selection, shortcuts)
 - `app/components/`: `TaskRow`, `QuickAdd`, `TaskInspector`, `BatchInspector`, `CommentThread`, `MarkdownEditor`, `TokenInput`, `PickerMenu`
 - `src-tauri/`: Tauri shell, with the opener plugin so links open in the system browser
+
+## License
+
+GitHub Tasks is released under the [MIT License](LICENSE).
