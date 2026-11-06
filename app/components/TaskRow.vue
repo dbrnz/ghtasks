@@ -199,7 +199,9 @@ const menu = computed<ContextMenuItem[][]>(() => [
         <UIcon name="i-lucide-message-square" class="size-3.5" />{{ issue.comments }}
       </span>
 
+      <!-- Assignees (change them by clicking the avatars, or in the inspector) -->
       <PickerMenu
+        v-if="issue.assignees.length"
         :items="assigneeItems"
         :model-value="issue.assignees.map(a => a.login)"
         variant="none"
@@ -208,11 +210,11 @@ const menu = computed<ContextMenuItem[][]>(() => [
         trigger-class="p-0 w-16 justify-end"
         @commit="users => actions.setAssignees(issue, users)"
       >
-        <UAvatarGroup v-if="issue.assignees.length" size="2xs" :max="3">
+        <UAvatarGroup size="2xs" :max="3">
           <UAvatar v-for="a in issue.assignees" :key="a.login" :src="a.avatar_url" :alt="a.login" />
         </UAvatarGroup>
-        <UIcon v-else name="i-lucide-user-plus" class="size-4 text-dimmed opacity-0 group-hover:opacity-100" />
       </PickerMenu>
+      <span v-else class="w-16 shrink-0" />
     </div>
   </UContextMenu>
 </template>
