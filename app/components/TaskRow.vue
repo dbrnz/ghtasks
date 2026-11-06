@@ -199,10 +199,6 @@ const menu = computed<ContextMenuItem[][]>(() => [
         <UIcon name="i-lucide-message-square" class="size-3.5" />{{ issue.comments }}
       </span>
 
-      <span class="hidden lg:block w-20 text-end text-xs text-dimmed shrink-0" :title="issue.updated_at">
-        {{ timeAgo(issue.updated_at) }}
-      </span>
-
       <PickerMenu
         :items="assigneeItems"
         :model-value="issue.assignees.map(a => a.login)"
