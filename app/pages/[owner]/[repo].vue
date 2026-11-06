@@ -433,7 +433,7 @@ const SHORTCUTS: [string[], string][] = [
         <section v-for="group in groups" :key="group.key">
           <button
             type="button"
-            class="sticky top-0 z-10 flex w-full items-center gap-2 px-3 h-9 bg-default/95 backdrop-blur border-b border-default text-sm font-semibold"
+            class="flex w-full items-center gap-2 px-3 h-9 bg-elevated/40 border-b border-default text-sm font-semibold"
             @click="toggleGroup(group.key)"
           >
             <UIcon
