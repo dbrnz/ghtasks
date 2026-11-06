@@ -30,6 +30,26 @@ export function formatDateTime(date: string | null | undefined): string {
   return date ? new Date(date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : ''
 }
 
+/** e.g. "Today at 9:31 AM", "Yesterday at 9:56 PM" or "5 Nov 2026 at 10:02 AM" */
+export function formatDayTime(date: string | Date | null | undefined): string {
+  if (!date) {
+    return ''
+  }
+  const d = new Date(date)
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const startOfYesterday = new Date(startOfToday)
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+  if (d >= startOfToday) {
+    return `Today at ${time}`
+  }
+  if (d >= startOfYesterday) {
+    return `Yesterday at ${time}`
+  }
+  return `${d.toLocaleDateString(undefined, { dateStyle: 'medium' })} at ${time}`
+}
+
 export function repoKey(owner: string, name: string): string {
   return `${owner}/${name}`.toLowerCase()
 }

@@ -74,6 +74,7 @@ const stateBadge = computed(() => {
 })
 
 const HEADING = PANEL_HEADING
+const commentThread = useTemplateRef<{ compose: () => void }>('commentThread')
 const NEW_MILESTONE = { label: 'New Milestone…', icon: 'i-lucide-circle-plus' }
 const SELECT = PANEL_SELECT
 const CHIP = PANEL_CHIP
@@ -294,7 +295,19 @@ function setPriority(values: string[]) {
 
         <USeparator />
 
-        <CommentThread :issue="issue" />
+        <CommentThread ref="commentThread" :issue="issue" />
+      </div>
+    </template>
+
+    <template #footer>
+      <div :class="STATUS_BAR">
+        <UButton
+          label="New Comment"
+          icon="i-lucide-message-square-plus"
+          color="primary"
+          variant="link"
+          @click="commentThread?.compose()"
+        />
       </div>
     </template>
   </UDashboardPanel>

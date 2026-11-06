@@ -219,5 +219,11 @@ const CHIP = PANEL_CHIP
         </section>
       </div>
     </template>
+
+    <template #footer>
+      <div :class="STATUS_BAR">
+        Select a single task to comment on it
+      </div>
+    </template>
   </UDashboardPanel>
 </template>

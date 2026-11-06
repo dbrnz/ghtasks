@@ -252,6 +252,14 @@ const order = computed(() => {
 const selected = ref<number[]>([])
 const anchor = ref<number | null>(null)
 
+// e.g. "1 of 19 Tasks Selected — Last Updated Today at 9:31 AM"
+const statusText = computed(() => {
+  const total = order.value.length
+  const tasks = `${total} ${total === 1 ? 'Task' : 'Tasks'}`
+  const count = selected.value.length ? `${selected.value.length} of ${tasks} Selected` : tasks
+  return store.lastSync ? `${count} — Last Updated ${formatDayTime(store.lastSync)}` : count
+})
+
 const selectedIssues = computed(() => selected.value.map(n => data.find(n)).filter((i): i is GhIssue => !!i))
 
 function select(number: number, event?: MouseEvent) {
@@ -441,6 +449,12 @@ const SHORTCUTS: [string[], string][] = [
           description="Nothing matches the current filters."
           class="py-16"
         />
+      </div>
+    </template>
+
+    <template #footer>
+      <div :class="STATUS_BAR">
+        <span class="truncate">{{ statusText }}</span>
       </div>
     </template>
   </UDashboardPanel>

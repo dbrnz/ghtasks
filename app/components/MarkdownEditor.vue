@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Write Markdown, with a formatting toolbar and a preview rendered by GitHub
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useResizeObserver } from '@vueuse/core'
 
 const props = withDefaults(defineProps<{
   placeholder?: string
@@ -143,29 +144,35 @@ function link() {
   }
 }
 
-// The menu holds focus until it has closed, so apply the heading after that
-let pendingHeading: number | null = null
+// A menu holds focus until it has closed, so its actions run after that
+let pending: (() => void) | null = null
 
-const headingMenu: DropdownMenuItem[][] = [[
-  { label: 'Normal text', onSelect: () => { pendingHeading = 0 } },
-  { label: 'Heading 1', class: 'text-xl font-semibold', onSelect: () => { pendingHeading = 1 } },
-  { label: 'Heading 2', class: 'text-lg font-semibold', onSelect: () => { pendingHeading = 2 } },
-  { label: 'Heading 3', class: 'font-semibold', onSelect: () => { pendingHeading = 3 } }
-]]
+function later(action: () => void) {
+  return () => { pending = action }
+}
 
-const headingMenuContent = {
-  align: 'start' as const,
-  onCloseAutoFocus: (event: Event) => {
-    event.preventDefault()
-    const level = pendingHeading
-    pendingHeading = null
-    if (level === null) {
-      element()?.focus()
-    } else {
-      heading(level)
+function menuContent(align: 'start' | 'end') {
+  return {
+    align,
+    onCloseAutoFocus: (event: Event) => {
+      event.preventDefault()
+      const action = pending
+      pending = null
+      if (action) {
+        action()
+      } else {
+        element()?.focus()
+      }
     }
   }
 }
+
+const HEADINGS: DropdownMenuItem[] = [
+  { label: 'Normal text', onSelect: later(() => heading(0)) },
+  { label: 'Heading 1', class: 'text-xl font-semibold', onSelect: later(() => heading(1)) },
+  { label: 'Heading 2', class: 'text-lg font-semibold', onSelect: later(() => heading(2)) },
+  { label: 'Heading 3', class: 'font-semibold', onSelect: later(() => heading(3)) }
+]
 
 interface Tool {
   icon: string
@@ -194,6 +201,66 @@ const TOOLS: Tool[][] = [
     { icon: 'i-lucide-paperclip', label: 'Attach file', action: () => fileInput.value?.click() }
   ]
 ]
+
+// ---------------------------------------------------------------- Toolbar overflow
+
+// Tools that don't fit go, in order, into a "…" menu (the toolbar never wraps)
+
+const GROUP_START = TOOLS.reduce<number[]>((starts, _group, g) => {
+  starts.push(g ? starts[g - 1]! + TOOLS[g - 1]!.length : 0)
+  return starts
+}, [])
+const TOOL_COUNT = TOOLS.flat().length
+
+const visibleCount = ref(TOOL_COUNT)
+const toolbarRow = useTemplateRef<HTMLElement>('toolbarRow')
+const pill = useTemplateRef<HTMLElement>('pill')
+const endTools = useTemplateRef<HTMLElement>('endTools')
+
+function layout() {
+  const row = toolbarRow.value
+  const bar = pill.value
+  const end = endTools.value
+  if (!row || !bar || !end || !row.clientWidth) {
+    return
+  }
+  const GAP = 2
+  const button = (bar.querySelector('button')?.offsetWidth ?? 24) + GAP
+  const separator = 9 + GAP
+  const style = getComputedStyle(row)
+  const available = row.clientWidth
+    - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
+    - end.offsetWidth - 4 // gap before the end tools
+    - 10 // the bar's own padding
+    - button // the text size menu is always shown
+  const widthFor = (n: number, more: boolean) => {
+    let width = 0
+    for (let g = 0; g < TOOLS.length; g++) {
+      const shown = Math.min(Math.max(n - GROUP_START[g]!, 0), TOOLS[g]!.length)
+      if (shown) {
+        width += separator + shown * button
+      }
+    }
+    return width + (more ? separator + button : 0)
+  }
+  let n = TOOL_COUNT
+  if (widthFor(n, false) > available) {
+    while (n > 0 && widthFor(n, true) > available) {
+      n--
+    }
+  }
+  visibleCount.value = n
+}
+
+useResizeObserver(toolbarRow, layout)
+useResizeObserver(endTools, layout)
+onMounted(() => nextTick(layout))
+
+const overflowMenu = computed<DropdownMenuItem[][]>(() => TOOLS
+  .map((group, g) => group
+    .filter((_tool, t) => GROUP_START[g]! + t >= visibleCount.value)
+    .map(tool => ({ label: tool.label, icon: tool.icon, kbds: tool.kbd, onSelect: later(tool.action) })))
+  .filter(group => group.length))
 
 // ---------------------------------------------------------------- Attachments
 
@@ -287,40 +354,57 @@ function onKeydown(event: KeyboardEvent) {
   >
     <input ref="imageInput" type="file" accept="image/*,video/*" multiple class="hidden" @change="onFilesChosen">
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFilesChosen">
-    <!-- Formatting toolbar -->
-    <div class="flex items-start gap-1 p-1.5">
-      <div class="flex flex-wrap items-center gap-0.5 px-1 py-0.5 rounded-lg bg-elevated min-w-0" :class="previewing ? 'opacity-50 pointer-events-none' : ''">
-        <UDropdownMenu :items="headingMenu" :content="headingMenuContent">
-          <UButton color="neutral" variant="ghost" size="xs" aria-label="Text size" title="Text size" class="font-semibold">
+    <!-- Formatting toolbar: tools that don't fit go into the "…" menu -->
+    <div ref="toolbarRow" class="flex items-center gap-1 p-1.5">
+      <div
+        ref="pill"
+        class="flex flex-nowrap items-center gap-0.5 px-1 py-0.5 rounded-lg bg-elevated min-w-0 overflow-hidden"
+        :class="previewing ? 'opacity-50 pointer-events-none' : ''"
+      >
+        <UDropdownMenu :items="HEADINGS" :content="menuContent('start')">
+          <UButton color="neutral" variant="ghost" size="xs" aria-label="Text size" title="Text size" class="font-semibold shrink-0">
             <span class="text-[10px]">a</span><span class="text-sm -ms-0.5">A</span>
           </UButton>
         </UDropdownMenu>
         <template v-for="(group, g) in TOOLS" :key="g">
-          <span class="w-px h-4 mx-1 bg-(--ui-border-accented)" />
-          <UTooltip v-for="tool in group" :key="tool.label" :text="tool.label" :kbds="tool.kbd">
-            <UButton
-              :icon="tool.icon"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              :aria-label="tool.label"
-              @mousedown.prevent
-              @click="tool.action"
-            />
-          </UTooltip>
+          <template v-if="GROUP_START[g]! < visibleCount">
+            <span class="w-px h-4 mx-1 shrink-0 bg-(--ui-border-accented)" />
+            <template v-for="(tool, t) in group" :key="tool.label">
+              <UTooltip v-if="GROUP_START[g]! + t < visibleCount" :text="tool.label" :kbds="tool.kbd">
+                <UButton
+                  :icon="tool.icon"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  class="shrink-0"
+                  :aria-label="tool.label"
+                  @mousedown.prevent
+                  @click="tool.action"
+                />
+              </UTooltip>
+            </template>
+          </template>
+        </template>
+        <template v-if="overflowMenu.length">
+          <span class="w-px h-4 mx-1 shrink-0 bg-(--ui-border-accented)" />
+          <UDropdownMenu :items="overflowMenu" :content="menuContent('start')">
+            <UButton icon="i-lucide-ellipsis" color="neutral" variant="ghost" size="xs" class="shrink-0" aria-label="More formatting" title="More" />
+          </UDropdownMenu>
         </template>
       </div>
-      <UTooltip :text="previewing ? 'Back to editing' : 'Preview'">
-        <UButton
-          :icon="previewing ? 'i-lucide-pencil' : 'i-lucide-eye'"
-          :color="previewing ? 'primary' : 'neutral'"
-          variant="ghost"
-          size="xs"
-          class="ms-auto"
-          :aria-label="previewing ? 'Back to editing' : 'Preview'"
-          @click="previewing = !previewing"
-        />
-      </UTooltip>
+      <div ref="endTools" class="flex items-center gap-1 ms-auto shrink-0">
+        <UTooltip :text="previewing ? 'Back to editing' : 'Preview'">
+          <UButton
+            :icon="previewing ? 'i-lucide-pencil' : 'i-lucide-eye'"
+            :color="previewing ? 'primary' : 'neutral'"
+            variant="ghost"
+            size="xs"
+            :aria-label="previewing ? 'Back to editing' : 'Preview'"
+            @click="previewing = !previewing"
+          />
+        </UTooltip>
+        <slot name="toolbar-end" />
+      </div>
     </div>
 
     <UTextarea

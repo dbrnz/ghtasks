@@ -12,6 +12,24 @@ const draft = ref('')
 const posting = ref(false)
 const editingId = ref<number | null>(null)
 const editDraft = ref('')
+const composing = ref(false)
+const composer = useTemplateRef<HTMLElement>('composer')
+
+/** Show the new comment editor (from the details panel's status bar). */
+function compose() {
+  composing.value = true
+  nextTick(() => {
+    composer.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    composer.value?.querySelector('textarea')?.focus()
+  })
+}
+
+/** Esc: hide the editor, keeping any text for next time. */
+function cancelCompose() {
+  composing.value = false
+}
+
+defineExpose({ compose })
 
 async function load() {
   loading.value = true
@@ -24,6 +42,7 @@ watch(() => props.issue.number, () => {
   comments.value = []
   draft.value = ''
   editingId.value = null
+  composing.value = false
   load()
 }, { immediate: true })
 
@@ -45,9 +64,10 @@ async function post(close = false) {
     if (comment) {
       comments.value.push(comment)
       draft.value = ''
+      composing.value = false
     }
   }
-  if (close) {
+  if (close && (body ? !draft.value : true)) {
     await actions.setState([props.issue], props.issue.state === 'open' ? 'closed' : 'open')
   }
   posting.value = false
@@ -80,6 +100,15 @@ async function remove(comment: GhComment) {
   }
 }
 
+const canPost = computed(() => !!draft.value.trim() && !isUploading(draft.value) && !posting.value)
+
+const postMenu = computed(() => [[
+  { label: 'Comment', icon: 'i-lucide-message-square', kbds: ['meta', 'enter'], disabled: !canPost.value, onSelect: () => post() },
+  props.issue.state === 'open'
+    ? { label: 'Comment and Close', icon: 'i-lucide-circle-check', disabled: !canPost.value, onSelect: () => post(true) }
+    : { label: 'Comment and Reopen', icon: 'i-lucide-rotate-ccw', disabled: !canPost.value, onSelect: () => post(true) }
+]])
+
 function commentMenu(comment: GhComment) {
   return [[
     { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => startEdit(comment) },
@@ -90,69 +119,96 @@ function commentMenu(comment: GhComment) {
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="space-y-3">
     <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
       Comments<span v-if="issue.comments"> ({{ issue.comments }})</span>
     </h3>
 
     <div v-if="loading && !comments.length" class="space-y-3">
-      <USkeleton v-for="n in 2" :key="n" class="h-16 w-full" />
+      <USkeleton v-for="n in 2" :key="n" class="h-20 w-full rounded-xl" />
     </div>
+    <p v-else-if="!comments.length && !composing" class="text-[15px] text-dimmed">
+      No comments yet.
+    </p>
 
-    <article v-for="comment in comments" :key="comment.id" class="flex gap-3">
-      <UAvatar :src="comment.user?.avatar_url" :alt="comment.user?.login" size="sm" class="mt-0.5" />
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 text-xs mb-1">
-          <span class="font-semibold text-highlighted">{{ comment.user?.login }}</span>
-          <span class="text-dimmed" :title="comment.created_at">{{ timeAgo(comment.created_at) }}</span>
-          <span v-if="comment.updated_at !== comment.created_at" class="text-dimmed">· edited</span>
-          <UDropdownMenu
-            v-if="comment.user?.login === viewer?.login"
-            :items="commentMenu(comment)"
-            :content="{ align: 'end' }"
-          >
-            <UButton icon="i-lucide-ellipsis" size="xs" color="neutral" variant="ghost" class="ms-auto" />
-          </UDropdownMenu>
-        </div>
-        <MarkdownEditor
-          v-if="editingId === comment.id"
-          v-model="editDraft"
-          autofocus
-          @submit="saveEdit(comment)"
-          @cancel="editingId = null"
+    <!-- Each comment uses the full width of the panel -->
+    <article v-for="comment in comments" :key="comment.id" class="group/comment rounded-xl bg-elevated/60 px-4 py-3">
+      <header class="flex items-center gap-2 mb-2 text-sm">
+        <UAvatar :src="comment.user?.avatar_url" :alt="comment.user?.login" size="xs" />
+        <span class="font-medium text-muted">{{ comment.user?.login }}</span>
+        <span class="ms-auto text-dimmed" :title="new Date(comment.created_at).toLocaleString()">
+          {{ formatDayTime(comment.created_at) }}<span v-if="comment.updated_at !== comment.created_at"> · edited</span>
+        </span>
+        <UDropdownMenu
+          v-if="comment.user?.login === viewer?.login"
+          :items="commentMenu(comment)"
+          :content="{ align: 'end' }"
         >
-          <template #actions>
-            <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="editingId = null" />
-            <UButton label="Save" size="sm" :disabled="isUploading(editDraft)" @click="saveEdit(comment)" />
-          </template>
-        </MarkdownEditor>
-        <!-- eslint-disable-next-line vue/no-v-html -- sanitised by GitHub -->
-        <div v-else class="markdown-body" @click="interceptLinks" v-html="comment.body_html" />
-      </div>
-    </article>
-
-    <div class="flex gap-3">
-      <UAvatar :src="viewer?.avatar_url" :alt="viewer?.login" size="sm" class="mt-0.5" />
+          <UButton
+            icon="i-lucide-ellipsis"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            class="-me-2 opacity-0 group-hover/comment:opacity-100 data-[state=open]:opacity-100"
+            aria-label="Comment actions"
+          />
+        </UDropdownMenu>
+      </header>
       <MarkdownEditor
-        v-model="draft"
-        class="flex-1"
-        placeholder="Enter comment"
-        :rows="3"
-        @submit="post()"
+        v-if="editingId === comment.id"
+        v-model="editDraft"
+        autofocus
+        class="bg-default"
+        @submit="saveEdit(comment)"
+        @cancel="editingId = null"
       >
         <template #actions>
-          <UButton
-            :label="issue.state === 'open' ? (draft.trim() ? 'Close with comment' : 'Close task') : (draft.trim() ? 'Reopen with comment' : 'Reopen task')"
-            :icon="issue.state === 'open' ? 'i-lucide-circle-check' : 'i-lucide-rotate-ccw'"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :disabled="posting"
-            @click="post(true)"
-          />
-          <UButton label="Comment" size="sm" :loading="posting" :disabled="!draft.trim() || isUploading(draft)" @click="post()" />
+          <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="editingId = null" />
+          <UButton label="Save" size="sm" :disabled="isUploading(editDraft)" @click="saveEdit(comment)" />
         </template>
       </MarkdownEditor>
+      <!-- eslint-disable-next-line vue/no-v-html -- sanitised by GitHub -->
+      <div v-else class="markdown-body text-[15px]" @click="interceptLinks" v-html="comment.body_html" />
+    </article>
+
+    <!-- New comment, opened from the status bar below -->
+    <div v-if="composing" ref="composer">
+      <MarkdownEditor
+        v-model="draft"
+        placeholder="Enter comment"
+        :rows="4"
+        autofocus
+        @submit="canPost && post()"
+        @cancel="cancelCompose"
+      >
+        <template #toolbar-end>
+          <div class="flex items-center">
+            <UButton
+              label="Comment"
+              color="primary"
+              variant="link"
+              size="sm"
+              :loading="posting"
+              :disabled="!canPost"
+              class="pe-1 font-semibold"
+              @click="post()"
+            />
+            <UDropdownMenu :items="postMenu" :content="{ align: 'end' }">
+              <UButton
+                icon="i-lucide-circle-chevron-down"
+                color="primary"
+                variant="link"
+                size="sm"
+                class="ps-0"
+                aria-label="Comment options"
+              />
+            </UDropdownMenu>
+          </div>
+        </template>
+      </MarkdownEditor>
+      <p class="mt-1.5 text-xs text-dimmed">
+        <UKbd value="meta" size="sm" /> <UKbd value="enter" size="sm" /> to comment · <UKbd value="escape" size="sm" /> to cancel
+      </p>
     </div>
   </section>
 </template>

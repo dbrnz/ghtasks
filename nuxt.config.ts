@@ -31,6 +31,15 @@ export default defineNuxtConfig({
     }
   },
 
+  // In development, fetch icons that were added since the dev server started
+  // (and so aren't in its bundle yet) from the Iconify API. Builds bundle every
+  // icon and work offline.
+  $development: {
+    icon: {
+      provider: 'iconify'
+    }
+  },
+
   // Don't load fonts from Google at runtime
   fonts: {
     providers: {
