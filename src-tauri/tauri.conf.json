@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "ghtasks",
+  "productName": "GitHub Tasks",
   "version": "0.1.0",
   "identifier": "com.ghtasks.desktop",
   "build": {
