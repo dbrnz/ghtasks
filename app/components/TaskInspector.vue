@@ -278,7 +278,7 @@ function setPriority(values: string[]) {
           >
             <template #actions>
               <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="editingBody = false" />
-              <UButton label="Save" size="sm" :loading="savingBody" @click="saveBody" />
+              <UButton label="Save" size="sm" :loading="savingBody" :disabled="isUploading(bodyDraft)" @click="saveBody" />
             </template>
           </MarkdownEditor>
           <USkeleton v-else-if="loadingBody" class="h-20 w-full" />

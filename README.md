@@ -24,6 +24,12 @@ All data lives on GitHub, so it stays compatible with anyone using GitHub direct
 Use a GitHub personal access token: a classic token with the `repo` scope, or a fine-grained token with *Issues: read & write* and *Metadata: read*.
 The token is stored in the webview's localStorage.
 
+## Attachments
+
+GitHub has no API for attaching files to issues or comments, so the editor's image/attach buttons (and paste or drag-and-drop) do what github.com does. You sign in to github.com once, in a GitHub window the app opens. Uploads then run inside a hidden github.com window using that session, and the file is stored at `https://github.com/user-attachments/assets/…` (see `src-tauri/src/github_web.rs`).
+
+This relies on an undocumented github.com endpoint that GitHub can change at any time. It only works in the desktop app, and files must be under 25 MB.
+
 ## Development
 
 ```bash

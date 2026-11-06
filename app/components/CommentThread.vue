@@ -123,7 +123,7 @@ function commentMenu(comment: GhComment) {
         >
           <template #actions>
             <UButton label="Cancel" color="neutral" variant="ghost" size="sm" @click="editingId = null" />
-            <UButton label="Save" size="sm" @click="saveEdit(comment)" />
+            <UButton label="Save" size="sm" :disabled="isUploading(editDraft)" @click="saveEdit(comment)" />
           </template>
         </MarkdownEditor>
         <!-- eslint-disable-next-line vue/no-v-html -- sanitised by GitHub -->
@@ -136,7 +136,7 @@ function commentMenu(comment: GhComment) {
       <MarkdownEditor
         v-model="draft"
         class="flex-1"
-        placeholder="Leave a comment…  (⌘↵ to send)"
+        placeholder="Enter comment"
         :rows="3"
         @submit="post()"
       >
@@ -150,7 +150,7 @@ function commentMenu(comment: GhComment) {
             :disabled="posting"
             @click="post(true)"
           />
-          <UButton label="Comment" size="sm" :loading="posting" :disabled="!draft.trim()" @click="post()" />
+          <UButton label="Comment" size="sm" :loading="posting" :disabled="!draft.trim() || isUploading(draft)" @click="post()" />
         </template>
       </MarkdownEditor>
     </div>

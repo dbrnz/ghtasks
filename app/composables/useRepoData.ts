@@ -20,6 +20,7 @@ export interface RepoStore {
   closedLoaded: boolean
   error: string | null
   lastSync: string | null
+  repoId: number | null // GitHub's numeric id for the repo, needed for attachments
 }
 
 const stores = new Map<string, RepoStore>()
@@ -41,7 +42,8 @@ function newStore(owner: string, name: string): RepoStore {
     loaded: false,
     closedLoaded: false,
     error: null,
-    lastSync: null
+    lastSync: null,
+    repoId: null
   }) as RepoStore
 }
 
@@ -288,8 +290,17 @@ export function useRepoData(owner: string, name: string) {
     return data as unknown as string
   }
 
+  async function repositoryId(): Promise<number> {
+    if (!s.repoId) {
+      const { data } = await octokit().rest.repos.get(base)
+      s.repoId = data.id
+    }
+    return s.repoId
+  }
+
   return {
     store: s,
+    repositoryId,
     load,
     sync,
     ensureClosed,
