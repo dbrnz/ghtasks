@@ -162,28 +162,36 @@ const searching = ref(!!view.value.search)
 const searchInput = useTemplateRef<{ focus: () => void }>('searchInput')
 
 function openSearch() {
-  searching.value = true
+  // An automatically opened field just needs focusing
+  if (!autoField.value) {
+    searching.value = true
+  }
   nextTick(() => searchInput.value?.focus())
 }
 
-// ---------------------------------------------------------------- Full or condensed
+// ---------------------------------------------------------------- Space available
 
-// With room to spare, the search field stays open and the "…" menu's actions
-// get their own buttons; otherwise the toolbar condenses to icons.
+// The toolbar opens up in steps as space allows:
+//   0. condensed: the actions are in "…" and Filter Issues is an icon
+//   1. the actions get their own buttons
+//   2. the Filter Issues field is open as well
+// (When space is short, clicking the icon still opens the field.)
 
 const root = useTemplateRef<HTMLElement>('root')
-const full = ref(false)
+const level = ref(0)
+const full = computed(() => level.value >= 1)
+const autoField = computed(() => level.value >= 2)
 
-// How much wider the full toolbar is than the condensed one. It starts as an
-// estimate and is then measured, as it depends on the search field's width.
-// Switching to full needs that much free space plus MARGIN, while switching
-// back only happens once the full toolbar no longer fits; the difference stops
-// it flipping back and forth.
-let fullExtra = 360
-let condensedWidth = 0
+// How much wider each step makes the toolbar. They start as estimates and are
+// then measured. Opening up needs that much free space plus MARGIN, while
+// closing down only happens once the toolbar no longer fits; the difference
+// stops it flipping back and forth.
+const stepExtra = [100, 260]
+let widthBefore = 0
+let measuring = false
 const MARGIN = 16
-// Belt and braces: never flip more than a few times in quick succession
-let flips: number[] = []
+// Belt and braces: never change more than a few times in quick succession
+let changes: number[] = []
 
 function measure() {
   const toolbar = root.value
@@ -194,17 +202,20 @@ function measure() {
   }
   const style = getComputedStyle(bar)
   const inner = bar.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
-  return { width: toolbar.offsetWidth, free: inner - left.scrollWidth - toolbar.offsetWidth - 24 }
+  // The title truncates when squeezed, so use the width of its full text
+  const title = left.querySelector<HTMLElement>('[data-slot="title"]')
+  const leftWidth = left.scrollWidth + (title ? title.scrollWidth - title.clientWidth : 0)
+  return { width: toolbar.offsetWidth, free: inner - leftWidth - toolbar.offsetWidth - 24 }
 }
 
-function setFull(value: boolean) {
+function setLevel(value: number) {
   const now = performance.now()
-  flips = flips.filter(t => now - t < 1000)
-  if (flips.length >= 4) {
+  changes = changes.filter(t => now - t < 1000)
+  if (changes.length >= 4) {
     return
   }
-  flips.push(now)
-  full.value = value
+  changes.push(now)
+  level.value = value
 }
 
 function layout() {
@@ -212,34 +223,38 @@ function layout() {
   if (!m) {
     return
   }
-  if (full.value) {
-    if (m.free < 0) {
-      setFull(false)
-    }
-  } else if (m.free >= fullExtra + MARGIN) {
-    // Only a fully condensed toolbar (search closed) gives the right baseline
-    condensedWidth = searching.value ? 0 : m.width
-    setFull(true)
+  // An open field the user asked for counts as already there
+  const maxLevel = searching.value ? 1 : 2
+  if (level.value > 0 && m.free < 0) {
+    setLevel(level.value - 1)
+  } else if (level.value < maxLevel && m.free >= stepExtra[level.value]! + MARGIN) {
+    widthBefore = m.width
+    measuring = true
+    setLevel(level.value + 1)
   }
 }
 
 useResizeObserver(() => root.value?.closest<HTMLElement>('[data-slot="root"]') ?? null, layout)
+// The toolbar itself changes size when the Filter Issues field opens or closes
+useResizeObserver(root, layout)
+watch(searching, () => nextTick(() => requestAnimationFrame(layout)))
 onMounted(() => nextTick(layout))
 
-// Once the full toolbar has rendered, learn its real extra width
-watch(full, async (isFull) => {
+// Once a step has rendered, learn how much wider it really is
+watch(level, async (now, before) => {
   await nextTick()
-  if (isFull && condensedWidth) {
+  if (measuring && now === before + 1 && widthBefore) {
     const m = measure()
     if (m) {
-      fullExtra = m.width - condensedWidth
+      stepExtra[before] = m.width - widthBefore
     }
   }
+  measuring = false
   // Re-check on the next frame (not straight away), so the browser can draw
   requestAnimationFrame(layout)
 })
 
-const showSearchField = computed(() => full.value || searching.value)
+const showSearchField = computed(() => autoField.value || searching.value)
 
 function closeSearch() {
   update({ search: '' })
@@ -249,11 +264,10 @@ function closeSearch() {
 function onSearchEscape() {
   if (view.value.search) {
     update({ search: '' })
+  } else if (autoField.value) {
+    (document.activeElement as HTMLElement | null)?.blur()
   } else {
     searching.value = false
-    if (full.value) {
-      (document.activeElement as HTMLElement | null)?.blur()
-    }
   }
 }
 
@@ -367,7 +381,7 @@ defineExpose({ openSearch })
 
     <!-- Search: a field, or (when space is short) an icon that expands into one -->
     <template v-if="showSearchField">
-      <UButton v-if="!full" icon="i-lucide-chevrons-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Close search" @click="closeSearch" />
+      <UButton v-if="!autoField" icon="i-lucide-chevrons-right" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Close search" @click="closeSearch" />
       <TokenInput
         ref="searchInput"
         :model-value="view.search"
@@ -381,8 +395,8 @@ defineExpose({ openSearch })
         @escape="onSearchEscape"
       />
     </template>
-    <UTooltip v-else text="Search" :kbds="['/']">
-      <UButton icon="i-lucide-search" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Search" @click="openSearch" />
+    <UTooltip v-else text="Filter Issues" :kbds="['/']">
+      <UButton icon="i-lucide-search" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="Filter Issues" @click="openSearch" />
     </UTooltip>
 
     <template v-if="full">
