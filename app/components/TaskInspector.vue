@@ -12,17 +12,6 @@ const priority = computed(() => priorityOf(props.issue))
 const labels = computed(() => props.issue.labels.filter(l => !isPriorityLabel(l.name)))
 const pinned = computed(() => pins.isPinned(props.issue.number))
 
-// Fetch the full issue (with rendered body) whenever the selection changes
-const loadingBody = ref(false)
-watch(() => props.issue.number, async (number) => {
-  editingBody.value = false
-  if (!data.find(number)?.body_html) {
-    loadingBody.value = true
-    await actions.attempt('Unable to load task', () => data.fetchIssue(number))
-    loadingBody.value = false
-  }
-}, { immediate: true })
-
 // Title
 const title = ref(props.issue.title)
 watch(() => props.issue.title, (t) => { title.value = t })
@@ -38,6 +27,18 @@ function saveTitle() {
 const editingBody = ref(false)
 const bodyDraft = ref('')
 const savingBody = ref(false)
+const loadingBody = ref(false)
+
+// Fetch the full issue (with rendered body) whenever the selection changes.
+// NB. `immediate`, so this must come after the refs it uses are declared.
+watch(() => props.issue.number, async (number) => {
+  editingBody.value = false
+  if (!data.find(number)?.body_html) {
+    loadingBody.value = true
+    await actions.attempt('Unable to load task', () => data.fetchIssue(number))
+    loadingBody.value = false
+  }
+}, { immediate: true })
 
 function editBody() {
   bodyDraft.value = props.issue.body ?? ''
