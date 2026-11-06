@@ -40,10 +40,10 @@ export default defineNuxtConfig({
     envPrefix: ['VITE_', 'TAURI_'],
     optimizeDeps: {
       include: [
+        '@tauri-apps/plugin-opener',
         '@vue/devtools-core',
         '@vue/devtools-kit',
-        'octokit'
-      ]
+        'octokit'      ]
     },
     server: {
       strictPort: true,
