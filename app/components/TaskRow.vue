@@ -16,6 +16,9 @@ const { data, actions, pins } = useTasksContext()
 const { labelItems, assigneeItems, typeItems } = usePickerItems(data.store)
 const hasTypes = computed(() => data.store.issueTypes.length > 0)
 
+// A pale pill, as used for assignees, labels and milestones
+const CHIP = 'inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-elevated text-[13px] text-default whitespace-nowrap'
+
 const priority = computed(() => priorityOf(props.issue))
 const labels = computed(() => props.issue.labels.filter(l => !isPriorityLabel(l.name)))
 const closed = computed(() => props.issue.state === 'closed')
@@ -102,7 +105,7 @@ const menu = computed<ContextMenuItem[][]>(() => [
   <UContextMenu :items="menu">
     <div
       ref="row"
-      class="group flex items-center gap-2 pe-3 h-8 cursor-default select-none"
+      class="group flex items-start gap-2.5 pe-4 py-1.5 cursor-default select-none"
       :class="selected ? 'bg-primary/15' : 'hover:bg-elevated/50'"
       :data-number="issue.number"
       @click="emit('select', $event)"
@@ -110,7 +113,7 @@ const menu = computed<ContextMenuItem[][]>(() => [
     >
       <!-- Pin, number and type; pinned tasks get a tab-shaped marker -->
       <div
-        class="flex items-center justify-end gap-1.5 h-5 w-24 ps-1.5 pe-3 shrink-0 text-xs font-medium tabular-nums"
+        class="flex items-center justify-end gap-1.5 h-5 w-24 ps-2 pe-3 shrink-0 text-xs font-semibold tabular-nums"
         :class="pinned ? 'bg-primary text-inverted' : 'text-muted'"
         :style="pinned ? { clipPath: 'polygon(0 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 0 100%)' } : undefined"
       >
@@ -132,89 +135,82 @@ const menu = computed<ContextMenuItem[][]>(() => [
         <TypeDot v-else-if="issue.type" :type="issue.type" />
       </div>
 
-      <UCheckbox
-        :model-value="closed"
-        :ui="{ base: 'rounded-[4px]' }"
-        :aria-label="closed ? 'Reopen' : 'Close'"
-        @click.stop
-        @update:model-value="actions.toggleState(issue)"
-      />
+      <div class="flex items-center h-5 shrink-0">
+        <UCheckbox
+          :model-value="closed"
+          size="lg"
+          :ui="{ base: 'rounded-[5px] bg-elevated border-default' }"
+          :aria-label="closed ? 'Reopen' : 'Close'"
+          @click.stop
+          @update:model-value="actions.toggleState(issue)"
+        />
+      </div>
 
-      <UTooltip v-if="priority" :text="`${priority.title} priority`">
-        <UIcon :name="priority.icon" class="size-4 shrink-0" :class="priority.class" />
-      </UTooltip>
-
-      <div class="flex-1 min-w-0 flex items-center gap-2">
+      <!-- Title, wrapping onto further lines, followed by assignees, labels and milestone -->
+      <div class="flex-1 min-w-0 text-[15px] leading-5">
         <UInput
           v-if="editing"
           ref="titleInput"
           v-model="draftTitle"
-          size="sm"
-          class="flex-1"
+          class="w-full"
           @click.stop
           @keydown.enter.prevent="finishEdit(true)"
           @keydown.esc.stop.prevent="finishEdit(false)"
           @blur="finishEdit(true)"
         />
         <template v-else>
+          <UTooltip v-if="priority" :text="`${priority.title} priority`">
+            <UIcon :name="priority.icon" class="size-4 me-1.5 align-[-3px]" :class="priority.class" />
+          </UTooltip>
           <span
-            class="truncate text-sm"
+            class="me-2 break-words"
             :class="closed ? 'line-through text-muted' : 'text-highlighted'"
           >{{ issue.title }}</span>
-        </template>
 
-        <PickerMenu
-          v-if="!editing"
-          :items="labelItems"
-          :model-value="labels.map(l => l.name)"
-          variant="none"
-          size="xs"
-          creatable
-          search-placeholder="Labels…"
-          trigger-class="p-0 min-w-0 shrink"
-          @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
-        >
-          <span class="flex items-center gap-1 min-w-0 overflow-hidden">
-            <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
-            <UIcon
-              v-if="!labels.length"
-              name="i-lucide-tag"
-              class="size-3.5 text-dimmed opacity-0 group-hover:opacity-100"
-            />
+          <PickerMenu
+            v-if="issue.assignees.length"
+            :items="assigneeItems"
+            :model-value="issue.assignees.map(a => a.login)"
+            variant="none"
+            size="xs"
+            search-placeholder="Assignees…"
+            trigger-class="p-0 inline-flex align-top me-1.5"
+            @commit="users => actions.setAssignees(issue, users)"
+          >
+            <span class="inline-flex flex-wrap gap-1">
+              <span v-for="a in issue.assignees" :key="a.login" :class="CHIP">
+                <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+              </span>
+            </span>
+          </PickerMenu>
+
+          <PickerMenu
+            v-if="labels.length"
+            :items="labelItems"
+            :model-value="labels.map(l => l.name)"
+            variant="none"
+            size="xs"
+            creatable
+            search-placeholder="Labels…"
+            trigger-class="p-0 inline-flex align-top me-1.5"
+            @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
+          >
+            <span class="inline-flex flex-wrap gap-1">
+              <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
+            </span>
+          </PickerMenu>
+
+          <span v-if="issue.milestone && groupBy !== 'milestone'" :class="[CHIP, 'align-top']">
+            <UIcon name="i-lucide-milestone" class="size-3.5 text-muted" />{{ issue.milestone.title }}
           </span>
-        </PickerMenu>
+        </template>
       </div>
 
-      <UBadge
-        v-if="issue.milestone && groupBy !== 'milestone'"
-        :label="issue.milestone.title"
-        icon="i-lucide-milestone"
-        color="neutral"
-        variant="outline"
-        size="sm"
-        class="hidden md:inline-flex max-w-36 truncate"
-      />
-
-      <span v-if="issue.comments" class="hidden sm:flex items-center gap-1 text-xs text-muted">
-        <UIcon name="i-lucide-message-square" class="size-3.5" />{{ issue.comments }}
+      <!-- Comment count, right-aligned -->
+      <span v-if="issue.comments" class="relative flex items-center justify-center h-5 w-6 shrink-0 text-muted">
+        <UIcon name="i-lucide-message-square" class="size-5" />
+        <span class="absolute inset-x-0 top-[4px] text-center text-[9px] font-semibold leading-none">{{ issue.comments }}</span>
       </span>
-
-      <!-- Assignees (change them by clicking the avatars, or in the inspector) -->
-      <PickerMenu
-        v-if="issue.assignees.length"
-        :items="assigneeItems"
-        :model-value="issue.assignees.map(a => a.login)"
-        variant="none"
-        size="xs"
-        search-placeholder="Assignees…"
-        trigger-class="p-0 w-16 justify-end"
-        @commit="users => actions.setAssignees(issue, users)"
-      >
-        <UAvatarGroup size="2xs" :max="3">
-          <UAvatar v-for="a in issue.assignees" :key="a.login" :src="a.avatar_url" :alt="a.login" />
-        </UAvatarGroup>
-      </PickerMenu>
-      <span v-else class="w-16 shrink-0" />
     </div>
   </UContextMenu>
 </template>

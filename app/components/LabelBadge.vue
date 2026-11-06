@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import type { GhLabel } from '~/utils/types'
 
-const props = defineProps<{ label: GhLabel }>()
-
-const style = computed(() => ({
-  backgroundColor: `#${props.label.color}`,
-  color: labelTextColor(props.label.color)
-}))
+defineProps<{ label: GhLabel }>()
 </script>
 
 <template>
   <span
-    class="inline-flex items-center h-5 px-2 rounded-full text-xs font-medium whitespace-nowrap max-w-40 truncate"
-    :style="style"
+    class="inline-flex items-center gap-1.5 h-5 px-1.5 rounded-full bg-elevated text-[13px] text-default whitespace-nowrap max-w-56"
     :title="label.description || label.name"
-  >{{ label.name }}</span>
+  >
+    <span class="size-2 rounded-full shrink-0" :style="{ backgroundColor: `#${label.color}` }" />
+    <span class="truncate">{{ label.name }}</span>
+  </span>
 </template>

@@ -430,23 +430,26 @@ const SHORTCUTS: [string[], string][] = [
       </div>
 
       <div v-else class="-mx-4 -my-4 sm:-mx-6 sm:-my-6" @click.self="selected = []">
-        <section v-for="group in groups" :key="group.key">
+        <section v-for="group in groups" :key="group.key" class="pt-4 first:pt-2">
+          <!-- Group title with a rule to the right; click to collapse -->
           <button
             type="button"
-            class="flex w-full items-center gap-2 px-3 h-9 bg-elevated/40 border-b border-default text-sm font-semibold"
+            class="group/header relative flex w-full items-center gap-2 ps-10 pe-4 h-10 text-start"
+            :aria-expanded="!collapsed[group.key]"
             @click="toggleGroup(group.key)"
           >
             <UIcon
               name="i-lucide-chevron-right"
-              class="size-4 text-dimmed transition-transform"
-              :class="collapsed[group.key] ? '' : 'rotate-90'"
+              class="absolute start-4 size-4 text-dimmed transition-transform"
+              :class="[collapsed[group.key] ? '' : 'rotate-90 opacity-0 group-hover/header:opacity-100']"
             />
-            <UAvatar v-if="group.avatar" :src="group.avatar" size="3xs" />
-            <span v-else-if="group.color" class="size-3 rounded-full" :style="{ backgroundColor: `#${group.color}` }" />
-            <UIcon v-else-if="group.icon" :name="group.icon" class="size-4" :class="group.iconClass ?? 'text-muted'" />
-            <span class="truncate">{{ group.title }}</span>
-            <UBadge :label="String(group.issues.length)" size="sm" color="neutral" variant="soft" />
-            <span v-if="group.subtitle" class="text-xs font-normal text-dimmed">{{ group.subtitle }}</span>
+            <UAvatar v-if="group.avatar" :src="group.avatar" size="2xs" />
+            <span v-else-if="group.color" class="size-3 rounded-full shrink-0" :style="{ backgroundColor: `#${group.color}` }" />
+            <UIcon v-else-if="group.iconClass" :name="group.icon!" class="size-5 shrink-0" :class="group.iconClass" />
+            <span class="text-xl font-semibold text-highlighted truncate">{{ group.title }}</span>
+            <span v-if="collapsed[group.key]" class="text-sm text-muted">{{ group.issues.length }}</span>
+            <span v-if="group.subtitle" class="text-sm text-dimmed whitespace-nowrap">{{ group.subtitle }}</span>
+            <span class="flex-1 h-px bg-(--ui-border) ms-4" />
           </button>
 
           <template v-if="!collapsed[group.key]">
