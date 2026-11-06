@@ -356,13 +356,14 @@ defineShortcuts({
 })
 
 const inspector = useInspectorWidth()
+const sidebar = useSidebar()
 
 const shortcutsOpen = ref(false)
 const SHORTCUTS: [string[], string][] = [
   [['j'], 'Next task'], [['k'], 'Previous task'], [['meta', 'click'], 'Add to selection'], [['shift', 'click'], 'Select range'],
   [['meta', 'a'], 'Select all'], [['escape'], 'Clear selection'], [['n'], 'New task'], [['/'], 'Search'],
   [['x'], 'Close / reopen'], [['p'], 'Pin / unpin'], [['1'], 'Urgent … 4 = Low'], [['0'], 'Clear priority'],
-  [['o'], 'Open on GitHub'], [['i'], 'Show / hide details'], [['r'], 'Refresh'], [['meta', 'o'], 'Add repository']
+  [['o'], 'Open on GitHub'], [['i'], 'Show / hide details'], [['meta', '\\'], 'Show / hide sidebar'], [['r'], 'Refresh'], [['meta', 'o'], 'Add repository']
 ]
 </script>
 
@@ -370,6 +371,9 @@ const SHORTCUTS: [string[], string][] = [
   <UDashboardPanel id="tasks" :min-size="30">
     <template #header>
       <UDashboardNavbar>
+        <template v-if="!sidebar.open.value" #leading>
+          <SidebarToggle class="me-1" />
+        </template>
         <template #title>
           <span class="text-muted font-normal">{{ owner }} /</span>&nbsp;{{ name }}
         </template>

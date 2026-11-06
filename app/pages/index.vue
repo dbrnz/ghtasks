@@ -3,6 +3,7 @@ const { repos } = useRepos()
 const { viewer } = useGitHub()
 const router = useRouter()
 const addRepoOpen = useState('addRepoOpen', () => false)
+const sidebar = useSidebar()
 
 // Go straight to the first repo if there is one
 onMounted(() => {
@@ -16,7 +17,11 @@ onMounted(() => {
 <template>
   <UDashboardPanel id="home">
     <template #header>
-      <UDashboardNavbar title="GitHub Tasks" />
+      <UDashboardNavbar title="GitHub Tasks">
+        <template v-if="!sidebar.open.value" #leading>
+          <SidebarToggle class="me-1" />
+        </template>
+      </UDashboardNavbar>
     </template>
     <template #body>
       <UEmpty

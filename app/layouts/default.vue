@@ -50,8 +50,11 @@ const userMenu = computed<DropdownMenuItem[][]>(() => [
   [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: signOut }]
 ])
 
+const sidebar = useSidebar()
+
 defineShortcuts({
-  meta_o: () => { addRepoOpen.value = true }
+  meta_o: () => { addRepoOpen.value = true },
+  'meta_\\': () => sidebar.toggle() // ⌘\
 })
 </script>
 
@@ -65,12 +68,14 @@ defineShortcuts({
       :min-size="12"
       :max-size="28"
       class="bg-elevated/30"
+      :class="sidebar.open.value ? '' : 'lg:hidden'"
     >
       <template #header="{ collapsed }">
         <NuxtLink to="/" class="flex items-center gap-2 font-semibold truncate">
           <UIcon name="i-lucide-list-checks" class="size-5 text-primary shrink-0" />
           <span v-if="!collapsed">GitHub Tasks</span>
         </NuxtLink>
+        <SidebarToggle v-if="!collapsed" class="ms-auto -me-1.5" />
       </template>
 
       <template #default="{ collapsed }">
