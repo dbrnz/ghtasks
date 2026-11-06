@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Browser favicon: like app-icon.svg but edge to edge with a larger,
+       bolder checklist so it stays legible at 16px. favicon.ico is
+       generated from this file. -->
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34383f"/>
+      <stop offset="1" stop-color="#17191d"/>
+    </linearGradient>
+    <linearGradient id="glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ad6ff"/>
+      <stop offset="1" stop-color="#3fb0f5"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#background)"/>
+  <g transform="translate(32 32) scale(2.75) translate(-12 -12)"
+     fill="none" stroke="url(#glyph)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 5h8m-8 7h8m-8 7h8M3 17l2 2l4-4M3 7l2 2l4-4"/>
+  </g>
+</svg>

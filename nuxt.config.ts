@@ -9,6 +9,16 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Browser tab icon: the SVG for modern browsers, with an .ico fallback
+  app: {
+    head: {
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' }
+      ]
+    }
+  },
+
   // Disable Server Side Rendering -- Tauri serves a static, client-rendered app
   ssr: false,
 
@@ -40,6 +50,7 @@ export default defineNuxtConfig({
     envPrefix: ['VITE_', 'TAURI_'],
     optimizeDeps: {
       include: [
+        '@tauri-apps/api/core',
         '@tauri-apps/plugin-opener',
         '@vue/devtools-core',
         '@vue/devtools-kit',
