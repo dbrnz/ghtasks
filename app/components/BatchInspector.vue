@@ -7,7 +7,7 @@ const props = defineProps<{ issues: GhIssue[] }>()
 
 const { data, actions, pins } = useTasksContext()
 const inspectorWidth = useInspectorWidth()
-const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems } = usePickerItems(data.store)
+const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems, labelsNamed, usersNamed } = usePickerItems(data.store)
 
 const busy = ref(false)
 
@@ -170,12 +170,14 @@ const CHIP = PANEL_CHIP
             trigger-class="p-0 w-full"
             @commit="v => applyDiff(commonAssignees, v, u => actions.addAssignee(issues, u), u => actions.removeAssignee(issues, u))"
           >
-            <span v-if="commonAssignees.length" class="flex flex-wrap gap-1.5">
-              <span v-for="login in commonAssignees" :key="login" :class="CHIP">
-                <UAvatar :src="data.store.assignees.find(a => a.login === login)?.avatar_url" :alt="login" size="3xs" />{{ login }}
+            <template #default="{ modelValue }">
+              <span v-if="usersNamed(modelValue).length" class="flex flex-wrap gap-1.5">
+                <span v-for="a in usersNamed(modelValue)" :key="a.login" :class="CHIP">
+                  <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+                </span>
               </span>
-            </span>
-            <span v-else class="text-[15px] text-dimmed">Add or remove assignees</span>
+              <span v-else class="text-[15px] text-dimmed">Add or remove assignees</span>
+            </template>
           </PickerMenu>
         </section>
 
@@ -192,12 +194,12 @@ const CHIP = PANEL_CHIP
             trigger-class="p-0 w-full"
             @commit="v => applyDiff(commonLabels, v, l => actions.addLabel(issues, l), l => actions.removeLabel(issues, l))"
           >
-            <span v-if="commonLabels.length" class="flex flex-wrap gap-1.5">
-              <template v-for="name in commonLabels" :key="name">
-                <LabelBadge v-if="data.store.labels.find(l => l.name === name)" :label="data.store.labels.find(l => l.name === name)!" />
-              </template>
-            </span>
-            <span v-else class="text-[15px] text-dimmed">Add or remove labels</span>
+            <template #default="{ modelValue }">
+              <span v-if="labelsNamed(modelValue).length" class="flex flex-wrap gap-1.5">
+                <LabelBadge v-for="label in labelsNamed(modelValue)" :key="label.name" :label="label" />
+              </span>
+              <span v-else class="text-[15px] text-dimmed">Add or remove labels</span>
+            </template>
           </PickerMenu>
         </section>
 

@@ -13,7 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const { data, actions, pins } = useTasksContext()
-const { labelItems, assigneeItems, typeItems } = usePickerItems(data.store)
+const { labelItems, assigneeItems, typeItems, labelsNamed, usersNamed } = usePickerItems(data.store)
 const hasTypes = computed(() => data.store.issueTypes.length > 0)
 
 // A pale pill, as used for assignees, labels and milestones
@@ -177,11 +177,13 @@ const menu = computed<ContextMenuItem[][]>(() => [
             trigger-class="p-0 inline-flex align-top me-1.5"
             @commit="users => actions.setAssignees(issue, users)"
           >
-            <span class="inline-flex flex-wrap gap-1">
-              <span v-for="a in issue.assignees" :key="a.login" :class="CHIP">
-                <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+            <template #default="{ modelValue }">
+              <span class="inline-flex flex-wrap gap-1">
+                <span v-for="a in usersNamed(modelValue)" :key="a.login" :class="CHIP">
+                  <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+                </span>
               </span>
-            </span>
+            </template>
           </PickerMenu>
 
           <PickerMenu
@@ -195,9 +197,11 @@ const menu = computed<ContextMenuItem[][]>(() => [
             trigger-class="p-0 inline-flex align-top me-1.5"
             @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
           >
-            <span class="inline-flex flex-wrap gap-1">
-              <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
-            </span>
+            <template #default="{ modelValue }">
+              <span class="inline-flex flex-wrap gap-1">
+                <LabelBadge v-for="label in labelsNamed(modelValue)" :key="label.name" :label="label" />
+              </span>
+            </template>
           </PickerMenu>
 
           <span v-if="issue.milestone && groupBy !== 'milestone'" :class="[CHIP, 'align-top']">

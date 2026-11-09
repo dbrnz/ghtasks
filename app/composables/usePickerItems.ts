@@ -1,4 +1,4 @@
-import type { PickerItem } from '~/utils/types'
+import type { GhLabel, GhUser, PickerItem } from '~/utils/types'
 import type { RepoStore } from './useRepoData'
 
 export const NO_MILESTONE = '__none__'
@@ -38,5 +38,16 @@ export function usePickerItems(store: RepoStore) {
     }))
   ])
 
-  return { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems }
+  // Pickers show their current (not yet saved) selection, as names
+  function labelsNamed(names: unknown): GhLabel[] {
+    return (Array.isArray(names) ? names as string[] : []).map((name, i) =>
+      store.labels.find(l => l.name === name) ?? { id: -1 - i, name, color: 'ededed' })
+  }
+
+  function usersNamed(logins: unknown): GhUser[] {
+    return (Array.isArray(logins) ? logins as string[] : []).map(login =>
+      store.assignees.find(u => u.login === login) ?? { login, avatar_url: '' })
+  }
+
+  return { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems, labelsNamed, usersNamed }
 }

@@ -338,7 +338,12 @@ defineShortcuts({
   'arrowdown': () => move(1),
   'k': () => move(-1),
   'arrowup': () => move(-1),
-  'escape': () => { selected.value = [] },
+  'escape': () => {
+    // Esc closes an open menu, pulldown or dialog first; don't also deselect
+    if (!document.querySelector('[role="menu"], [role="listbox"], [role="dialog"]')) {
+      selected.value = []
+    }
+  },
   '/': () => toolbar.value?.openSearch(),
   'meta_f': () => toolbar.value?.openSearch(),
   'n': newTask,

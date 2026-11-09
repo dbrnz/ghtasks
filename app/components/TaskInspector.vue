@@ -9,7 +9,7 @@ const props = defineProps<{
 
 const { data, actions, pins } = useTasksContext()
 const inspectorWidth = useInspectorWidth()
-const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems } = usePickerItems(data.store)
+const { labelItems, assigneeItems, milestoneItems, priorityItems, typeItems, labelsNamed, usersNamed } = usePickerItems(data.store)
 
 const priority = computed(() => priorityOf(props.issue))
 const labels = computed(() => props.issue.labels.filter(l => !isPriorityLabel(l.name)))
@@ -183,12 +183,14 @@ function setPriority(values: string[]) {
           trigger-class="p-0 mt-1.5"
           @commit="users => actions.setAssignees(issue, users)"
         >
-          <span v-if="issue.assignees.length" class="flex flex-wrap gap-1.5">
-            <span v-for="a in issue.assignees" :key="a.login" :class="CHIP">
-              <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+          <template #default="{ modelValue }">
+            <span v-if="usersNamed(modelValue).length" class="flex flex-wrap gap-1.5">
+              <span v-for="a in usersNamed(modelValue)" :key="a.login" :class="CHIP">
+                <UAvatar :src="a.avatar_url" :alt="a.login" size="3xs" />{{ a.login }}
+              </span>
             </span>
-          </span>
-          <span v-else class="text-[15px] text-dimmed">Unassigned</span>
+            <span v-else class="text-[15px] text-dimmed">Unassigned</span>
+          </template>
         </PickerMenu>
       </div>
     </template>
@@ -300,10 +302,12 @@ function setPriority(values: string[]) {
             trigger-class="p-0 w-full"
             @commit="names => actions.setLabels(issue, priority ? [...names, priority.label] : names)"
           >
-            <span v-if="labels.length" class="flex flex-wrap gap-1.5">
-              <LabelBadge v-for="label in labels" :key="label.id" :label="label" />
-            </span>
-            <span v-else class="text-[15px] text-dimmed">Enter labels</span>
+            <template #default="{ modelValue }">
+              <span v-if="labelsNamed(modelValue).length" class="flex flex-wrap gap-1.5">
+                <LabelBadge v-for="label in labelsNamed(modelValue)" :key="label.name" :label="label" />
+              </span>
+              <span v-else class="text-[15px] text-dimmed">Enter labels</span>
+            </template>
           </PickerMenu>
         </section>
 

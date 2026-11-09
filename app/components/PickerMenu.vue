@@ -67,6 +67,13 @@ function onOpen(open: boolean) {
   }
 }
 
+// Don't lose changes if the picker goes away while it's open
+onBeforeUnmount(() => {
+  if (props.multiple) {
+    commitIfChanged()
+  }
+})
+
 function onCreate(name: string) {
   extra.value.push({ value: name, label: name, color: 'ededed' })
   draft.value = props.multiple ? [...draft.value, name] : [name]
