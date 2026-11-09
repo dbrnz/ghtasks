@@ -228,8 +228,20 @@ const allGroups = computed<Group[]>(() => {
   return result.map(g => ({ ...g, issues: sorted(g.issues) }))
 })
 
-const groups = computed(() => allGroups.value.filter(g =>
-  !view.value.hidden.includes(g.key) && !(view.value.hideEmpty && !g.issues.length)))
+// Parents whose sub-issues are collapsed in the list
+const collapsedTasks = useLocalStorage<number[]>(`ghtasks:collapsed-tasks:${key}`, [])
+const collapsedTaskSet = computed(() => new Set(collapsedTasks.value))
+
+function toggleTask(number: number) {
+  collapsedTasks.value = collapsedTaskSet.value.has(number)
+    ? collapsedTasks.value.filter(n => n !== number)
+    : [...collapsedTasks.value, number]
+}
+
+// Visible groups, with their tasks arranged as trees (sub-issues under parents)
+const groups = computed(() => allGroups.value
+  .filter(g => !view.value.hidden.includes(g.key) && !(view.value.hideEmpty && !g.issues.length))
+  .map(g => ({ ...g, rows: treeRows(g.issues, i => parentNumber(i, owner, name), collapsedTaskSet.value) })))
 
 const groupOptions = computed(() => allGroups.value.map(g => ({ key: g.key, title: g.title })))
 
@@ -245,7 +257,7 @@ const order = computed(() => {
   const numbers: number[] = []
   for (const g of groups.value) {
     if (collapsed.value[g.key]) continue
-    for (const i of g.issues) {
+    for (const { issue: i } of g.rows) {
       if (!seen.has(i.number)) {
         seen.add(i.number)
         numbers.push(i.number)
@@ -457,12 +469,16 @@ const SHORTCUTS: [string[], string][] = [
 
           <template v-if="!collapsed[group.key]">
             <TaskRow
-              v-for="issue in group.issues"
-              :key="issue.number"
-              :issue="issue"
-              :selected="selected.includes(issue.number)"
+              v-for="row in group.rows"
+              :key="row.issue.number"
+              :issue="row.issue"
+              :depth="row.depth"
+              :sub-issues="row.children"
+              :expanded="!collapsedTaskSet.has(row.issue.number)"
+              :selected="selected.includes(row.issue.number)"
               :group-by="view.groupBy"
-              @select="select(issue.number, $event)"
+              @select="select(row.issue.number, $event)"
+              @toggle="toggleTask(row.issue.number)"
             />
             <QuickAdd
               :ref="(el: any) => { if (el) quickAdds[group.key] = el }"

@@ -255,6 +255,10 @@ export function useRepoData(owner: string, name: string) {
   async function addSubIssue(parent: number, child: GhIssue) {
     const gh = octokit()
     await gh.rest.issues.addSubIssue({ ...base, issue_number: parent, sub_issue_id: child.id })
+    const added = find(child.number)
+    if (added) {
+      added.parent_issue_url = `https://api.github.com/repos/${owner}/${name}/issues/${parent}`
+    }
     const issue = find(parent)
     if (issue) {
       const summary = issue.sub_issues_summary ?? { total: 0, completed: 0, percent_completed: 0 }

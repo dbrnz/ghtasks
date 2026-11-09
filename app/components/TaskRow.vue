@@ -2,14 +2,25 @@
 import type { ContextMenuItem } from '@nuxt/ui'
 import type { GhIssue, GroupBy } from '~/utils/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   issue: GhIssue
   selected: boolean
   groupBy: GroupBy
-}>()
+  /** How deeply it's nested as a sub-issue */
+  depth?: number
+  /** How many of its sub-issues are listed under it */
+  subIssues?: number
+  /** Whether those sub-issues are shown */
+  expanded?: boolean
+}>(), {
+  depth: 0,
+  subIssues: 0,
+  expanded: true
+})
 
 const emit = defineEmits<{
   select: [event: MouseEvent]
+  toggle: []
 }>()
 
 const { data, actions, pins } = useTasksContext()
@@ -133,6 +144,22 @@ const menu = computed<ContextMenuItem[][]>(() => [
           <TypeDot :type="issue.type" />
         </PickerMenu>
         <TypeDot v-else-if="issue.type" :type="issue.type" />
+      </div>
+
+      <!-- Sub-issues are indented; parents get a chevron to show or hide theirs -->
+      <span v-if="depth" class="shrink-0" :style="{ width: `${depth * 20}px` }" />
+      <div class="flex items-center justify-center h-5 w-4 -mx-1 shrink-0">
+        <button
+          v-if="subIssues"
+          type="button"
+          class="flex text-dimmed hover:text-default"
+          :aria-label="expanded ? 'Hide sub-issues' : 'Show sub-issues'"
+          :aria-expanded="expanded"
+          @click.stop="emit('toggle')"
+          @dblclick.stop
+        >
+          <UIcon name="i-lucide-chevron-right" class="size-4 transition-transform" :class="expanded ? 'rotate-90' : ''" />
+        </button>
       </div>
 
       <div class="flex items-center h-5 shrink-0">

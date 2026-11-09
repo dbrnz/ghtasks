@@ -45,6 +45,7 @@ export interface GhIssue {
   milestone: GhMilestone | null
   type?: GhIssueType | null
   sub_issues_summary?: { total: number, completed: number, percent_completed: number }
+  parent_issue_url?: string | null
   user: GhUser | null
   comments: number
   created_at: string
