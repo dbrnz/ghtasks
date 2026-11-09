@@ -135,7 +135,8 @@ export function useTaskActions(data: RepoData) {
       return undefined
     }
     const child = await attempt('Unable to create sub-issue', async () => {
-      const issue = await data.createIssue({ title })
+      // A sub-issue starts in its parent's milestone
+      const issue = await data.createIssue({ title, milestone: parent.milestone?.number ?? null })
       await data.addSubIssue(parent.number, issue)
       return issue
     })
