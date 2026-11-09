@@ -18,6 +18,8 @@ const view = defineModel<ViewSettings>('view', { required: true })
 
 const emit = defineEmits<{
   'new-task': []
+  'new-milestone': []
+  'new-label': []
   'refresh': []
   'shortcuts': []
   'open-github': []
@@ -281,14 +283,22 @@ const moreMenu = computed<DropdownMenuItem[][]>(() => [[
 
 const inspector = useInspectorWidth()
 
+const newMenu: DropdownMenuItem[][] = [
+  [{ label: 'New Task…', kbds: ['n'], onSelect: () => emit('new-task') }],
+  [
+    { label: 'New Milestone', icon: 'i-lucide-flag', onSelect: () => emit('new-milestone') },
+    { label: 'New Label', icon: 'i-lucide-tag', onSelect: () => emit('new-label') }
+  ]
+]
+
 defineExpose({ openSearch })
 </script>
 
 <template>
   <div ref="root" class="flex items-center gap-2">
-    <UTooltip text="New task" :kbds="['n']">
-      <UButton icon="i-lucide-plus" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="New task" @click="emit('new-task')" />
-    </UTooltip>
+    <UDropdownMenu :items="newMenu" :content="{ align: 'start', sideOffset: 8 }">
+      <UButton icon="i-lucide-plus" color="neutral" variant="ghost" :class="[ROUND, PILL_BG]" aria-label="New" />
+    </UDropdownMenu>
 
     <!-- Filter, sort and group -->
     <div class="flex items-center gap-0.5 p-0.5 rounded-full" :class="PILL_BG">

@@ -389,6 +389,8 @@ const SHORTCUTS: [string[], string][] = [
             :active-filter="activeFilter"
             :loading="store.loading"
             @new-task="newTask"
+            @new-milestone="actions.newMilestone()"
+            @new-label="actions.newLabel()"
             @refresh="refresh"
             @shortcuts="shortcutsOpen = true"
             @open-github="openExternal(`https://github.com/${owner}/${name}/issues`)"

@@ -107,18 +107,43 @@ export function useTaskActions(data: RepoData) {
     }, 'remove assignee')
   }
 
-  /** Create a milestone, asking for its title, and then put the issues in it. */
-  async function newMilestone(issues: GhIssue[]) {
+  /** Create a milestone, asking for its title, and then put any issues in it. */
+  async function newMilestone(issues: GhIssue[] = []) {
     const title = await dialogs.prompt('New Milestone', { placeholder: 'Milestone title', confirmLabel: 'Create' })
     if (!title) {
       return undefined
     }
     const existing = s.milestones.find(m => m.title.toLowerCase() === title.toLowerCase())
+    if (existing && !issues.length) {
+      toast.add({ title: `There's already a milestone called “${existing.title}”`, color: 'warning', icon: 'i-lucide-flag' })
+      return existing
+    }
     const milestone = existing ?? await attempt('Unable to create milestone', () => data.createMilestone(title))
     if (milestone) {
+      if (!existing) {
+        toast.add({ title: `Created milestone “${milestone.title}”`, icon: 'i-lucide-flag', duration: 2500 })
+      }
       await setMilestone(issues, milestone.number)
     }
     return milestone
+  }
+
+  /** Create a label, asking for its name, colour and description. */
+  async function newLabel() {
+    const details = await dialogs.newLabel()
+    if (!details) {
+      return undefined
+    }
+    const existing = s.labels.find(l => l.name.toLowerCase() === details.name.toLowerCase())
+    if (existing) {
+      toast.add({ title: `There's already a label called “${existing.name}”`, color: 'warning', icon: 'i-lucide-tag' })
+      return existing
+    }
+    const label = await attempt('Unable to create label', () => data.createLabel(details.name, details.color, details.description))
+    if (label) {
+      toast.add({ title: `Created label “${label.name}”`, icon: 'i-lucide-tag', duration: 2500 })
+    }
+    return label
   }
 
   function setMilestone(issues: GhIssue[], milestone: number | null) {
@@ -176,6 +201,7 @@ export function useTaskActions(data: RepoData) {
     removeAssignee,
     setMilestone,
     newMilestone,
+    newLabel,
     setType,
     setPriority,
     create

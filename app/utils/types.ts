@@ -111,3 +111,9 @@ export interface PickerItem {
   iconClass?: string
   description?: string
 }
+
+export interface NewLabel {
+  name: string
+  color: string // hex, no '#'
+  description: string
+}
