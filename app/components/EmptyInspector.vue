@@ -5,6 +5,7 @@ const inspectorWidth = useInspectorWidth()
 
 const TOOLS = [
   { icon: 'i-lucide-files', label: 'Copy' },
+  { icon: 'i-lucide-list-plus', label: 'New Sub-issue' },
   { icon: 'i-lucide-compass', label: 'Open on GitHub' },
   { icon: 'i-lucide-square-arrow-out-up-right', label: 'Open in Window' }
 ]

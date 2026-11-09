@@ -243,6 +243,41 @@ export function useRepoData(owner: string, name: string) {
     return milestone
   }
 
+  // ---- Sub-issues
+
+  async function listSubIssues(number: number): Promise<GhIssue[]> {
+    const gh = octokit()
+    const subIssues = await gh.paginate(gh.rest.issues.listSubIssues, { ...base, issue_number: number, per_page: 100 })
+    return subIssues as GhIssue[]
+  }
+
+  /** Link `child` (by its id, not number) under the issue `parent`. */
+  async function addSubIssue(parent: number, child: GhIssue) {
+    const gh = octokit()
+    await gh.rest.issues.addSubIssue({ ...base, issue_number: parent, sub_issue_id: child.id })
+    const issue = find(parent)
+    if (issue) {
+      const summary = issue.sub_issues_summary ?? { total: 0, completed: 0, percent_completed: 0 }
+      const total = summary.total + 1
+      const completed = summary.completed + (child.state === 'closed' ? 1 : 0)
+      issue.sub_issues_summary = { total, completed, percent_completed: Math.round(100 * completed / total) }
+    }
+  }
+
+  /** The issue's parent, if it's a sub-issue. */
+  async function getParent(number: number): Promise<GhIssue | null> {
+    const gh = octokit()
+    try {
+      const { data } = await gh.rest.issues.getParent({ ...base, issue_number: number })
+      return data as GhIssue
+    } catch (err) {
+      if ((err as { status?: number }).status === 404) {
+        return null
+      }
+      throw err
+    }
+  }
+
   async function createLabel(name: string, color: string, description?: string): Promise<GhLabel> {
     const gh = octokit()
     const { data } = await gh.rest.issues.createLabel({ ...base, name, color, description: description || undefined })
@@ -327,6 +362,9 @@ export function useRepoData(owner: string, name: string) {
     ensureLabels,
     createMilestone,
     createLabel,
+    listSubIssues,
+    addSubIssue,
+    getParent,
     listComments,
     addComment,
     updateComment,

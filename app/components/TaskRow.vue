@@ -204,6 +204,14 @@ const menu = computed<ContextMenuItem[][]>(() => [
             </template>
           </PickerMenu>
 
+          <span
+            v-if="issue.sub_issues_summary?.total"
+            :class="[CHIP, 'align-top me-1.5 tabular-nums']"
+            :title="`${issue.sub_issues_summary.completed} of ${issue.sub_issues_summary.total} sub-issues done`"
+          >
+            <UIcon name="i-lucide-list-tree" class="size-3.5 text-muted" />{{ issue.sub_issues_summary.completed }}/{{ issue.sub_issues_summary.total }}
+          </span>
+
           <span v-if="issue.milestone && groupBy !== 'milestone'" :class="[CHIP, 'align-top']">
             <UIcon name="i-lucide-milestone" class="size-3.5 text-muted" />{{ issue.milestone.title }}
           </span>

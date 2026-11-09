@@ -23,7 +23,15 @@ provide(TasksContextKey, {
   data,
   actions,
   pins,
-  viewer: computed(() => viewer.value as GhIssue['user'])
+  viewer: computed(() => viewer.value as GhIssue['user']),
+  open: async (number: number) => {
+    if (!data.find(number)) {
+      await actions.attempt('Unable to load task', () => data.fetchIssue(number))
+    }
+    if (data.find(number)) {
+      selected.value = [number]
+    }
+  }
 })
 
 useHead({ title: `${owner}/${name} · GitHub Tasks` })

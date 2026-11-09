@@ -91,6 +91,17 @@ const copyMenu = computed(() => [COPY_FORMATS.map(format => ({
   }
 }))])
 
+// The task this is a sub-issue of, if any
+const { open } = useTasksContext()
+const parent = ref<GhIssue | null>(null)
+watch(() => props.issue.number, async (number) => {
+  parent.value = null
+  const result = await actions.attempt('Unable to load parent task', () => data.getParent(number))
+  if (props.issue.number === number) {
+    parent.value = result ?? null
+  }
+}, { immediate: true })
+
 function openInWindow() {
   openTaskWindow(data.store.owner, data.store.name, props.issue.number, props.issue.title)
 }
@@ -140,6 +151,9 @@ function setPriority(values: string[]) {
                   <UButton icon="i-lucide-files" color="neutral" variant="ghost" class="rounded-full" aria-label="Copy" />
                 </UTooltip>
               </UDropdownMenu>
+              <UTooltip text="New Sub-issue">
+                <UButton icon="i-lucide-list-plus" color="neutral" variant="ghost" class="rounded-full" aria-label="New Sub-issue" @click="actions.newSubIssue(issue)" />
+              </UTooltip>
               <UTooltip text="Open on GitHub">
                 <UButton icon="i-lucide-compass" color="neutral" variant="ghost" class="rounded-full" aria-label="Open on GitHub" @click="openExternal(issue.html_url)" />
               </UTooltip>
@@ -192,6 +206,18 @@ function setPriority(values: string[]) {
             <span v-else class="text-[15px] text-dimmed">Unassigned</span>
           </template>
         </PickerMenu>
+
+        <!-- When this task is a sub-issue -->
+        <button
+          v-if="parent"
+          type="button"
+          class="flex items-center gap-1.5 mt-2 max-w-full text-sm text-muted hover:text-default"
+          :disabled="!open"
+          @click="open?.(parent.number)"
+        >
+          <UIcon name="i-lucide-corner-left-up" class="size-4 shrink-0" />
+          <span class="truncate">Sub-issue of <span class="font-semibold tabular-nums">#{{ parent.number }}</span> {{ parent.title }}</span>
+        </button>
       </div>
     </template>
 
@@ -340,6 +366,8 @@ function setPriority(values: string[]) {
             Add a description
           </button>
         </section>
+
+        <SubIssues :issue="issue" />
 
         <USeparator />
 

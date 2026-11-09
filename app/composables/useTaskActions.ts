@@ -128,6 +128,23 @@ export function useTaskActions(data: RepoData) {
     return milestone
   }
 
+  /** Create a task, asking for its title, as a sub-issue of `parent`. */
+  async function newSubIssue(parent: GhIssue) {
+    const title = await dialogs.prompt(`New Sub-issue of #${parent.number}`, { placeholder: 'Sub-issue title', confirmLabel: 'Create' })
+    if (!title) {
+      return undefined
+    }
+    const child = await attempt('Unable to create sub-issue', async () => {
+      const issue = await data.createIssue({ title })
+      await data.addSubIssue(parent.number, issue)
+      return issue
+    })
+    if (child) {
+      toast.add({ title: `Created sub-issue #${child.number}`, description: child.title, icon: 'i-lucide-list-plus', duration: 2500 })
+    }
+    return child
+  }
+
   /** Create a label, asking for its name, colour and description. */
   async function newLabel() {
     const details = await dialogs.newLabel()
@@ -202,6 +219,7 @@ export function useTaskActions(data: RepoData) {
     setMilestone,
     newMilestone,
     newLabel,
+    newSubIssue,
     setType,
     setPriority,
     create
@@ -215,6 +233,8 @@ export interface TasksContext {
   actions: TaskActions
   pins: ReturnType<typeof usePins>
   viewer: ComputedRef<GhUser | null>
+  /** Show another task (e.g. a sub-issue or parent) in the details panel */
+  open?: (number: number) => void
 }
 
 export const TasksContextKey: InjectionKey<TasksContext> = Symbol('tasks')

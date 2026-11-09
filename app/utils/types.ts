@@ -44,6 +44,7 @@ export interface GhIssue {
   assignees: GhUser[]
   milestone: GhMilestone | null
   type?: GhIssueType | null
+  sub_issues_summary?: { total: number, completed: number, percent_completed: number }
   user: GhUser | null
   comments: number
   created_at: string

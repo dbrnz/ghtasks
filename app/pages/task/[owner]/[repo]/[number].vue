@@ -15,11 +15,14 @@ const data = useRepoData(owner, name)
 const actions = useTaskActions(data)
 const pins = usePins(repoKey(owner, name))
 
+const router = useRouter()
+
 provide(TasksContextKey, {
   data,
   actions,
   pins,
-  viewer: computed(() => viewer.value as GhIssue['user'])
+  viewer: computed(() => viewer.value as GhIssue['user']),
+  open: (n: number) => router.push(`/task/${owner}/${name}/${n}`)
 })
 
 const issue = computed(() => data.find(number))
